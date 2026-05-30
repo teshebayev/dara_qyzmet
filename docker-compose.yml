@@ -1,0 +1,64 @@
+# Dara Kyzmet — поднять одной командой:  docker compose up --build
+# (mock-режим VLM, работает без GPU). С реальной Qwen2.5-VL: см. профиль gpu ниже.
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: dara_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dara}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dara}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: ./backend
+    container_name: dara_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dara}
+      POSTGRES_HOST: db
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      SEED_DEMO: "true"
+      # VLM: по умолчанию mock (без GPU). Для реальной модели -> false + профиль gpu.
+      MOCK_VLM: ${MOCK_VLM:-true}
+      # vLLM запускается ОТДЕЛЬНЫМ скриптом (./run_vllm.sh) на хосте с GPU,
+      # поэтому api ходит к нему через host.docker.internal (а не имя сервиса).
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://host.docker.internal:8000/v1}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-dummy}
+      VLM_MODEL: ${VLM_MODEL:-qwen}
+      LLM_MODEL: ${LLM_MODEL:-qwen}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # доступ к хосту из контейнера (Linux)
+    ports:
+      - "8080:8000"          # UI + API: http://localhost:8080
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    container_name: dara_web
+    restart: unless-stopped
+    ports:
+      - "3000:80"            # Фронтенд (React): http://localhost:3000
+    depends_on:
+      - api
+
+  # vLLM (Qwen2.5-VL) в compose НЕ описан намеренно — он поднимается отдельным
+  # скриптом ./run_vllm.sh на машине с GPU. api обращается к нему по
+  # host.docker.internal:8000. Для боевого инференса:
+  #   1) bash run_vllm.sh                      # отдельный терминал, ждём загрузки модели
+  #   2) MOCK_VLM=false docker compose up --build
+
+volumes:
+  pgdata:
