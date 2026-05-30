@@ -17,6 +17,7 @@ from ..models import (
     Invoice,
     InvoiceItem,
     Order,
+    Product,
     Stock,
 )
 from ..schemas import (
@@ -37,16 +38,56 @@ def _order_for_store(order_id: uuid.UUID, p: Principal, db: Session) -> Order:
     return order
 
 
+def _resolve_product_id(db: Session, org_id: uuid.UUID, it: InvoiceItem) -> uuid.UUID:
+    """Находит товар в каталоге по штрихкоду/названию, иначе создаёт — чтобы
+    приёмка всегда оприходовалась в сток (распознанные позиции часто без product_id)."""
+    if it.product_id:
+        return it.product_id
+    prod = None
+    if it.barcode:
+        prod = (
+            db.query(Product)
+            .filter(Product.organization_id == org_id, Product.barcode == it.barcode)
+            .first()
+        )
+    if not prod:
+        prod = (
+            db.query(Product)
+            .filter(Product.organization_id == org_id, Product.name == it.name)
+            .first()
+        )
+    if not prod:
+        prod = Product(organization_id=org_id, name=it.name, barcode=it.barcode, unit=it.unit or "шт")
+        db.add(prod)
+        db.flush()
+    it.product_id = prod.id
+    return prod.id
+
+
 def _add_to_stock(db: Session, org_id: uuid.UUID, invoice: Invoice) -> None:
-    """Принятые позиции попадают в сток магазина."""
+    """Принятые позиции попадают в сток магазина (товар создаётся при необходимости).
+
+    Цена фиксируется как средневзвешенная себестоимость; если цена прихода неизвестна
+    (0), цену не трогаем, чтобы не обнулять стоимость остатка."""
     for it in invoice.items:
-        if not it.product_id:
-            continue
-        row = db.get(Stock, (org_id, it.product_id))
+        pid = _resolve_product_id(db, org_id, it)
+        q = Decimal(str(it.qty or 0))
+        price = Decimal(str(it.price or 0))
+        row = db.get(Stock, (org_id, pid))
         if row:
-            row.quantity = Decimal(str(row.quantity)) + Decimal(str(it.qty))
+            old_q = Decimal(str(row.quantity or 0))
+            new_q = old_q + q
+            if price > 0 and new_q > 0:
+                old_avg = Decimal(str(row.avg_price or 0))
+                row.avg_price = ((old_q * old_avg + q * price) / new_q).quantize(Decimal("0.01"))
+                row.last_price = price
+            row.quantity = new_q
         else:
-            db.add(Stock(organization_id=org_id, product_id=it.product_id, quantity=it.qty))
+            db.add(Stock(
+                organization_id=org_id, product_id=pid, quantity=q,
+                avg_price=price if price > 0 else Decimal("0"),
+                last_price=price if price > 0 else None,
+            ))
 
 
 @router.post("/orders/{order_id}/acceptance", response_model=AcceptanceOut)

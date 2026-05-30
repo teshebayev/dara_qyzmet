@@ -21,9 +21,53 @@ def _emb(text: str) -> list[float]:
     return [x / n for x in v]
 
 
+# Дополнительные товары каталога (имя, штрихкод). Добавляются идемпотентно при
+# каждом старте — попадают и в уже существующую БД (без пересоздания тома).
+EXTRA_PRODUCTS = [
+    ("bon aqua", "40822426"),
+    ("C922 webcam", "6920377905316"),
+    ("kiyoka влажные салфетки", "721688451723"),
+    ("flovel care влажные салфетки", "0745114229908"),
+    ("fantastic стикеры", "6946991801865"),
+    ("black deli Think фломастер", "6921734941251"),
+    ("blue deli Think фломастер", "6921734941268"),
+    ("green deli Think фломастер", "6921734941299"),
+    ("ручка", "6932784200106"),
+    ("zara white jeans", "03991330710387"),
+    ("dizzy energy drink", "4870204391510"),
+    ("fusetea персик", "5449000189325"),
+    ("snickers", "4607065001445"),
+    ("coca-cola classic", "54491472"),
+    ("fanta", "40822938"),
+]
+
+
+def _ensure_extra_products(db: Session, store: Organization) -> int:
+    """Добавляет недостающие товары каталога магазину (по штрихкоду). Идемпотентно."""
+    existing = set(
+        db.scalars(select(Product.barcode).where(Product.organization_id == store.id))
+    )
+    added = 0
+    for name, barcode in EXTRA_PRODUCTS:
+        if barcode in existing:
+            continue
+        db.add(Product(
+            organization_id=store.id, name=name, barcode=barcode,
+            unit="шт", embedding=_emb(name),
+        ))
+        added += 1
+    return added
+
+
 def seed(db: Session) -> None:
-    if db.scalar(select(Organization).limit(1)):
-        return  # уже засеяно
+    existing_store = db.scalar(
+        select(Organization).where(Organization.org_type == "store")
+    )
+    if existing_store:
+        # БД уже засеяна — только дополняем каталог недостающими товарами
+        _ensure_extra_products(db, existing_store)
+        db.commit()
+        return
 
     store = Organization(name="Магазин «Береке»", org_type="store", bin="901130350123")
     dist = Organization(name="ТОО «Молпром»", org_type="distributor", bin="123456789012")
@@ -70,9 +114,13 @@ def seed(db: Session) -> None:
         db.add(pr)
     db.flush()
 
-    # начальные остатки
-    for pr in products:
-        db.add(Stock(organization_id=store.id, product_id=pr.id, quantity=5))
+    # начальные остатки с ценой из каталога
+    for i, pr in enumerate(products):
+        price = catalog[i][2]
+        db.add(Stock(
+            organization_id=store.id, product_id=pr.id, quantity=5,
+            avg_price=price, last_price=price,
+        ))
 
     # демо-заявка в статусе shipped (готова к приёмке)
     store_user = db.scalar(select(User).where(User.email == "store@dara.kz"))
@@ -87,4 +135,6 @@ def seed(db: Session) -> None:
         for i, qty in enumerate([20, 30, 15, 24, 12])
     ]
     db.add(order)
+
+    _ensure_extra_products(db, store)
     db.commit()

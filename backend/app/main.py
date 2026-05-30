@@ -35,6 +35,16 @@ async def lifespan(app: FastAPI):
             seed(db)
         finally:
             db.close()
+    if settings.index_catalog_on_start:
+        # Best-effort: индексация каталога в Qdrant для поиска товара (агент).
+        # Недоступность Qdrant/модели не должна мешать старту приложения.
+        from .catalog import index_catalog
+
+        db = SessionLocal()
+        try:
+            index_catalog(db)
+        finally:
+            db.close()
     yield
 
 
@@ -52,11 +62,7 @@ for r in (auth, orders, invoices, acceptance, supplier, products, agent):
 
 @app.get("/health")
 def health() -> dict:
-    return {
-        "status": "ok",
-        "vlm": "mock" if settings.mock_vlm else "vllm",
-        "model": settings.vlm_model,
-    }
+    return {"status": "ok", "model": settings.vlm_model}
 
 
 @app.get("/")

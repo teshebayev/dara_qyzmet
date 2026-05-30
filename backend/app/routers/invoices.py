@@ -4,13 +4,20 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import Principal, get_principal, require_role
 from ..models import Invoice, InvoiceItem, Order, Product
-from ..schemas import InvoiceHeadPatch, InvoiceItemPatch, InvoiceOut
+from ..schemas import (
+    InvoiceCheckOut,
+    InvoiceHeadPatch,
+    InvoiceItemPatch,
+    InvoiceOut,
+)
+from ..services.invoice_check import check_invoice
 from ..services.recalc import line_total
 from ..vlm.client import recognize
 from ..vlm.pdf import normalize
@@ -59,7 +66,10 @@ async def upload_invoice(
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
-    parsed, backend = recognize(pages)
+    try:
+        parsed, backend = recognize(pages)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Не удалось распознать накладную: модель (vLLM) недоступна") from e
 
     # создать/обновить накладную
     invoice = order.invoice or Invoice(order_id=order.id)
@@ -94,6 +104,26 @@ async def upload_invoice(
     db.commit()
     db.refresh(invoice)
     return invoice
+
+
+@router.get("/invoices/{invoice_id}/check", response_model=InvoiceCheckOut)
+def check_invoice_route(
+    invoice_id: uuid.UUID,
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Проверка накладной на ошибки распознавания (арифметика строк и итога).
+
+    Только читает и предлагает исправления — ничего не меняет (ТЗ: агент не
+    подтверждает сам). Применение правок — через PATCH соответствующих позиций.
+    """
+    invoice = db.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(404, "Накладная не найдена")
+    order = db.get(Order, invoice.order_id)
+    if order.store_org_id != p.org_id and p.role != "admin":
+        raise HTTPException(403, "Нет доступа")
+    return check_invoice(invoice)
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceOut)

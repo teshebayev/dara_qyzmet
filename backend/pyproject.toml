@@ -18,6 +18,14 @@ dependencies = [
     "bcrypt>=4.2",
     "pymupdf>=1.25",
     "pillow>=11.0",
+    # --- агент (LangGraph) ---
+    "langgraph>=0.2.60",
+    "langchain-core>=0.3.30",
+    # --- поиск товара по каталогу (Qdrant + CLIP-эмбеддинги, ONNX/CPU) ---
+    "qdrant-client>=1.12",
+    "fastembed>=0.5",
+    # --- наблюдаемость агента (опц.); SDK v2 под self-hosted Langfuse v2 ---
+    "langfuse>=2.0,<3",
 ]
 
 [build-system]

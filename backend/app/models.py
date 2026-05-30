@@ -56,7 +56,6 @@ class Product(Base):
     __tablename__ = "product"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organization.id"))
-    sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
     barcode: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     unit: Mapped[str] = mapped_column(String(16), default="шт")
@@ -76,6 +75,8 @@ class Stock(Base):
         ForeignKey("product.id"), primary_key=True
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
+    avg_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)   # средневзвешенная себестоимость
+    last_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)  # последняя цена прихода
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )

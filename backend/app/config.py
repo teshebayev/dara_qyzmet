@@ -19,9 +19,6 @@ class Settings(BaseSettings):
     access_token_ttl_min: int = 720  # 12 часов
 
     # --- VLM / LLM (OpenAI-совместимый, напр. vLLM с Qwen2.5-VL) ---
-    # mock_vlm=true -> сервис работает без GPU/модели (детерминированная заглушка),
-    # удобно поднять весь проект одной командой на ноутбуке.
-    mock_vlm: bool = True
     openai_base_url: str = "http://vllm:8000/v1"
     openai_api_key: str = "EMPTY"
     vlm_model: str = "qwen"          # = served-model-name в vLLM
@@ -30,6 +27,17 @@ class Settings(BaseSettings):
 
     # --- Seed demo-данных при старте ---
     seed_demo: bool = True
+
+    # --- Qdrant (поиск товара по каталогу: текст и фото в общем CLIP-пространстве) ---
+    qdrant_url: str = "http://qdrant:6333"
+    qdrant_collection: str = "products"
+    # CLIP ViT-B/32 через fastembed (ONNX/CPU): текст и изображение в одном 512-мерном
+    # пространстве, поэтому фото-запрос матчится с проиндексированными названиями товаров.
+    embed_text_model: str = "Qdrant/clip-ViT-B-32-text"
+    embed_image_model: str = "Qdrant/clip-ViT-B-32-vision"
+    embed_dim: int = 512
+    # Best-effort индексация каталога в Qdrant при старте (после seed).
+    index_catalog_on_start: bool = True
 
 
 settings = Settings()

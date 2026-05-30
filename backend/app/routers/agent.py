@@ -1,171 +1,53 @@
-"""Агент поддержки: отвечает по стоку/заявкам/расхождениям (ТЗ 9).
+"""Агент поддержки (ТЗ 9). Логика — в пакете `app.agent` (LangGraph).
 
-Инструменты — только чтение, всегда с фильтром по organization_id вызвавшего.
-mock-режим: маршрутизация по ключевым словам (работает без LLM).
-real-режим: tool-calling через OpenAI-совместимый LLM (vLLM).
+Реальный режим: function-calling на guided_json — LLM сам выбирает и вызывает
+инструменты. Память диалога хранится в БД (AgentConversation/AgentMessage): на
+каждый запрос подгружаем историю разговора в контекст и сохраняем новые реплики.
+Все инструменты фильтруют данные по organization_id вызвавшего (изоляция тенантов).
 """
 from __future__ import annotations
 
-import json
+import uuid
 
 import httpx
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..agent.graph import build_graph
+from ..agent.state import AgentState
 from ..config import settings
 from ..db import get_db
 from ..deps import Principal, get_principal
-from ..models import Discrepancy, Order, Product, Stock
-from ..schemas import AgentAsk, AgentReply
+from ..models import AgentConversation, AgentMessage
+from ..schemas import AgentAsk, AgentMessageOut, AgentReply
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent"])
 
-
-# ---------- инструменты (читают только данные тенанта) ----------
-
-
-def tool_get_stock(db: Session, org_id, query: str | None = None) -> list[dict]:
-    stmt = (
-        select(Product.name, Stock.quantity)
-        .join(Stock, Stock.product_id == Product.id)
-        .where(Stock.organization_id == org_id)
-    )
-    if query:
-        stmt = stmt.where(Product.name.ilike(f"%{query}%"))
-    return [{"name": n, "quantity": float(q)} for n, q in db.execute(stmt).all()]
+_HISTORY_LIMIT = 20  # сколько последних реплик подаём в контекст
 
 
-def tool_get_orders(db: Session, org_id, status: str | None = None) -> list[dict]:
-    stmt = select(Order).where(
-        (Order.store_org_id == org_id) | (Order.supplier_org_id == org_id)
-    )
-    if status:
-        stmt = stmt.where(Order.status == status)
-    return [
-        {"id": str(o.id), "status": o.status, "created_at": o.created_at.isoformat()}
-        for o in db.scalars(stmt.order_by(Order.created_at.desc()).limit(20))
-    ]
+def _get_conversation(body: AgentAsk, p: Principal, db: Session) -> AgentConversation:
+    if body.conversation_id:
+        conv = db.get(AgentConversation, body.conversation_id)
+        if conv and conv.user_id == p.user_id:
+            return conv
+    conv = AgentConversation(user_id=p.user_id, title=(body.message or "")[:120])
+    db.add(conv)
+    db.flush()
+    return conv
 
 
-def tool_get_discrepancies(db: Session, org_id, dtype: str | None = None) -> list[dict]:
-    rows = db.execute(
-        select(Discrepancy.type, func.count()).group_by(Discrepancy.type)
-    ).all()
-    return [{"type": t, "count": c} for t, c in rows if (not dtype or t == dtype)]
-
-
-def tool_find_product(db: Session, org_id, query: str) -> list[dict]:
-    stmt = select(Product).where(
-        Product.organization_id == org_id, Product.name.ilike(f"%{query}%")
-    )
-    return [{"name": p.name, "barcode": p.barcode} for p in db.scalars(stmt.limit(10))]
-
-
-TOOLS_SPEC = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_stock",
-            "description": "Остатки товаров на складе организации",
-            "parameters": {
-                "type": "object",
-                "properties": {"query": {"type": "string"}},
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_orders",
-            "description": "Заявки/поставки, опционально по статусу",
-            "parameters": {
-                "type": "object",
-                "properties": {"status": {"type": "string"}},
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_discrepancies",
-            "description": "Сводка расхождений по типам",
-            "parameters": {
-                "type": "object",
-                "properties": {"dtype": {"type": "string"}},
-            },
-        },
-    },
-]
-
-
-def _dispatch(name: str, args: dict, db: Session, org_id) -> list[dict]:
-    if name == "get_stock":
-        return tool_get_stock(db, org_id, args.get("query"))
-    if name == "get_orders":
-        return tool_get_orders(db, org_id, args.get("status"))
-    if name == "get_discrepancies":
-        return tool_get_discrepancies(db, org_id, args.get("dtype"))
-    if name == "find_product":
-        return tool_find_product(db, org_id, args.get("query", ""))
-    return []
-
-
-def _mock_answer(message: str, db: Session, org_id) -> AgentReply:
-    m = message.lower()
-    if any(w in m for w in ("остат", "сток", "склад", "сколько")):
-        data = tool_get_stock(db, org_id)
-        if not data:
-            return AgentReply(answer="На складе пока нет остатков.", used_tools=["get_stock"])
-        lines = "; ".join(f"{d['name']} — {d['quantity']:g}" for d in data[:10])
-        return AgentReply(answer=f"Текущие остатки: {lines}.", used_tools=["get_stock"])
-    if any(w in m for w in ("расхожд", "недостач", "пересорт", "брак", "излиш")):
-        data = tool_get_discrepancies(db, org_id)
-        if not data:
-            return AgentReply(answer="Расхождений не зафиксировано.", used_tools=["get_discrepancies"])
-        lines = ", ".join(f"{d['type']}: {d['count']}" for d in data)
-        return AgentReply(answer=f"Расхождения по типам: {lines}.", used_tools=["get_discrepancies"])
-    if any(w in m for w in ("заявк", "поставк", "статус", "заказ")):
-        data = tool_get_orders(db, org_id)
-        lines = ", ".join(f"{d['id'][:8]}={d['status']}" for d in data[:10])
-        return AgentReply(answer=f"Последние заявки: {lines or 'нет'}.", used_tools=["get_orders"])
-    return AgentReply(
-        answer="Могу подсказать по остаткам, заявкам и расхождениям. Спросите, например: «сколько молока на складе?»",
-        used_tools=[],
-    )
-
-
-def _llm_answer(message: str, db: Session, org_id) -> AgentReply:
-    """Реальный tool-calling через OpenAI-совместимый эндпоинт."""
-    url = settings.openai_base_url.rstrip("/") + "/chat/completions"
-    headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
-    messages = [
-        {"role": "system", "content": "Ты ассистент склада. Используй инструменты для точных данных. Отвечай кратко на русском."},
-        {"role": "user", "content": message},
-    ]
-    used: list[str] = []
-    with httpx.Client(timeout=settings.request_timeout) as client:
-        for _ in range(4):  # ограничение итераций tool-calling
-            resp = client.post(
-                url,
-                headers=headers,
-                json={"model": settings.llm_model, "messages": messages, "tools": TOOLS_SPEC},
-            )
-            resp.raise_for_status()
-            msg = resp.json()["choices"][0]["message"]
-            calls = msg.get("tool_calls")
-            if not calls:
-                return AgentReply(answer=msg.get("content", ""), used_tools=used)
-            messages.append(msg)
-            for call in calls:
-                name = call["function"]["name"]
-                args = json.loads(call["function"].get("arguments") or "{}")
-                used.append(name)
-                result = _dispatch(name, args, db, org_id)
-                messages.append(
-                    {"role": "tool", "tool_call_id": call["id"], "content": json.dumps(result, ensure_ascii=False)}
-                )
-    return AgentReply(answer="Не удалось получить ответ модели.", used_tools=used)
+def _load_history(conv_id: uuid.UUID, db: Session) -> list[dict]:
+    rows = list(db.scalars(
+        select(AgentMessage)
+        .where(AgentMessage.conversation_id == conv_id)
+        .order_by(AgentMessage.created_at.desc())
+        .limit(_HISTORY_LIMIT)
+    ))
+    rows.reverse()
+    return [{"role": m.role, "content": m.content}
+            for m in rows if m.content and m.role in ("user", "assistant")]
 
 
 @router.post("/ask", response_model=AgentReply)
@@ -174,9 +56,71 @@ def ask(
     p: Principal = Depends(get_principal),
     db: Session = Depends(get_db),
 ) -> AgentReply:
-    if settings.mock_vlm:
-        return _mock_answer(body.message, db, p.org_id)
+    conv = _get_conversation(body, p, db)
+    history = _load_history(conv.id, db)
+
+    # Граф строим на запрос: get_db замыкается на сессию ИМЕННО этого запроса.
+    graph = build_graph(get_db=lambda: db, settings=settings)
+    confirm_draft = body.confirm_draft.model_dump(mode="json") if body.confirm_draft else None
+    state = AgentState(
+        message=body.message,
+        org_id=str(p.org_id),
+        user_id=str(p.user_id),
+        image_b64=body.image_b64,
+        confirm_draft=confirm_draft,
+        conversation_id=str(conv.id),
+        history=history,
+    )
     try:
-        return _llm_answer(body.message, db, p.org_id)
-    except httpx.HTTPError:
-        return _mock_answer(body.message, db, p.org_id)
+        result = graph.invoke(state)
+    except httpx.HTTPStatusError as e:
+        body_text = ""
+        try:
+            body_text = (e.response.text or "")[:400]
+        except Exception:  # noqa: BLE001
+            pass
+        raise HTTPException(
+            502,
+            f"Модель вернула ошибку {e.response.status_code}. "
+            "Возможно, неверное имя модели или модель недоступна. "
+            f"Ответ модели: {body_text}",
+        ) from e
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            503,
+            f"Не удалось обратиться к модели ({type(e).__name__}): {e}. "
+            "Проверьте, что vLLM запущен и доступен по OPENAI_BASE_URL.",
+        ) from e
+    except Exception as e:  # noqa: BLE001 — диагностика прочих сбоев агента
+        raise HTTPException(502, f"Ошибка агента: {type(e).__name__}: {e}") from e
+
+    answer = result.get("answer", "")
+    # сохраняем реплики в память диалога
+    db.add(AgentMessage(conversation_id=conv.id, role="user", content=body.message))
+    db.add(AgentMessage(conversation_id=conv.id, role="assistant", content=answer))
+    db.commit()
+
+    return AgentReply(
+        answer=answer,
+        used_tools=result.get("used_tools", []),
+        data=result.get("data", {}),
+        conversation_id=conv.id,
+    )
+
+
+@router.get("/messages", response_model=list[AgentMessageOut])
+def messages(
+    conversation_id: uuid.UUID,
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> list[AgentMessage]:
+    """История разговора (для восстановления переписки в UI)."""
+    conv = db.get(AgentConversation, conversation_id)
+    if not conv or conv.user_id != p.user_id:
+        raise HTTPException(404, "Разговор не найден")
+    rows = db.scalars(
+        select(AgentMessage)
+        .where(AgentMessage.conversation_id == conv.id)
+        .order_by(AgentMessage.created_at.asc())
+    )
+    return [m for m in rows if m.role in ("user", "assistant")]

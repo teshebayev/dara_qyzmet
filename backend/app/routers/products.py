@@ -1,35 +1,22 @@
 """Каталог, сток, распознавание товара по штрихкоду/фото (ТЗ 6.6, 8)."""
 from __future__ import annotations
 
-import hashlib
-import math
 import uuid
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .. import catalog
 from ..db import get_db
 from ..deps import Principal, get_principal
 from ..models import Counterparty, Organization, Product, Stock
-from ..schemas import ProductMatch, ProductOut, StockOut
+from ..schemas import ProductOut, RecognizeMatch, RecognizeOut, StockOut
+from ..vlm import client as vlm
+from ..vlm.pdf import normalize
 
 router = APIRouter(prefix="/api/v1", tags=["catalog"])
-
-EMB_DIM = 32
-
-
-def pseudo_embedding(data: bytes) -> list[float]:
-    """Заглушка эмбеддинга (детерминированная). В проде — мультимодальный энкодер
-    (CLIP-подобный) + pgvector. Здесь — хэш-вектор для демонстрации kNN-пути."""
-    h = hashlib.sha256(data).digest()
-    vec = [(b / 255.0) for b in h[:EMB_DIM]]
-    norm = math.sqrt(sum(x * x for x in vec)) or 1.0
-    return [x / norm for x in vec]
-
-
-def cosine(a: list[float], b: list[float]) -> float:
-    return sum(x * y for x, y in zip(a, b))
 
 
 @router.get("/products", response_model=list[ProductOut])
@@ -39,39 +26,109 @@ def find_products(
     p: Principal = Depends(get_principal),
     db: Session = Depends(get_db),
 ) -> list[Product]:
-    stmt = select(Product).where(Product.organization_id == p.org_id)
+    # Магазин видит свой каталог; поставщик — каталог обслуживаемых магазинов
+    # (товары принадлежат организации-магазину).
+    if p.role == "distributor":
+        store_ids = select(Counterparty.store_org_id).where(
+            Counterparty.supplier_org_id == p.org_id
+        )
+        stmt = select(Product).where(Product.organization_id.in_(store_ids))
+    else:
+        stmt = select(Product).where(Product.organization_id == p.org_id)
     if barcode:
         stmt = stmt.where(Product.barcode == barcode)
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q}%"))
-    return list(db.scalars(stmt.limit(20)))
+    return list(db.scalars(stmt.limit(50)))
 
 
-@router.post("/products/recognize-image", response_model=list[ProductMatch])
+MAX_PRODUCT_PHOTOS = 5
+
+
+@router.post("/products/{product_id}/photo")
+async def upload_product_photo(
+    product_id: uuid.UUID,
+    file: UploadFile = File(...),
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Добавить фото товара (до 5 ракурсов) и проиндексировать image-эмбеддинг в Qdrant."""
+    prod = db.get(Product, product_id)
+    if not prod or prod.organization_id != p.org_id:
+        raise HTTPException(404, "Товар не найден")
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Пустой файл")
+    png = normalize(data, file.content_type or "", file.filename or "")[0]
+    res = catalog.add_product_image(
+        prod.id, prod.organization_id, prod.name, prod.barcode, png,
+        max_photos=MAX_PRODUCT_PHOTOS,
+    )
+    if res.get("limit"):
+        raise HTTPException(409, f"Достигнут лимит {MAX_PRODUCT_PHOTOS} фото — удалите лишние")
+    if not res.get("ok"):
+        raise HTTPException(502, "Не удалось проиндексировать фото (Qdrant/эмбеддер недоступны)")
+    if not prod.image_url:
+        prod.image_url = f"indexed://{file.filename}"
+        db.commit()
+    return {"ok": True, "photos": res["count"], "max": MAX_PRODUCT_PHOTOS}
+
+
+@router.get("/products/{product_id}/photos")
+def product_photos_count(
+    product_id: uuid.UUID,
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> dict:
+    prod = db.get(Product, product_id)
+    if not prod or prod.organization_id != p.org_id:
+        raise HTTPException(404, "Товар не найден")
+    return {"photos": catalog.count_product_images(prod.id), "max": MAX_PRODUCT_PHOTOS}
+
+
+@router.delete("/products/{product_id}/photos")
+def clear_product_photos(
+    product_id: uuid.UUID,
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> dict:
+    prod = db.get(Product, product_id)
+    if not prod or prod.organization_id != p.org_id:
+        raise HTTPException(404, "Товар не найден")
+    catalog.clear_product_images(prod.id)
+    prod.image_url = None
+    db.commit()
+    return {"ok": True, "photos": 0}
+
+
+@router.post("/products/recognize-image", response_model=RecognizeOut)
 async def recognize_by_image(
     file: UploadFile = File(...),
     top: int = Query(3, ge=1, le=10),
     p: Principal = Depends(get_principal),
     db: Session = Depends(get_db),
-) -> list[ProductMatch]:
-    """Фото товара без штрихкода -> ближайшие товары каталога (kNN по эмбеддингу)."""
+) -> RecognizeOut:
+    """Фото товара -> ближайшие товары каталога (Qdrant/CLIP) + подсчёт единиц (VLM)."""
     data = await file.read()
     if not data:
         raise HTTPException(400, "Пустой файл")
-    query_vec = pseudo_embedding(data)
-    products = list(
-        db.scalars(
-            select(Product).where(
-                Product.organization_id == p.org_id, Product.embedding.isnot(None)
-            )
-        )
+    matches = catalog.search_by_image(data, str(p.org_id), limit=top)
+
+    recognized_name = None
+    count = None
+    try:  # подсчёт через VLM — best-effort (нужен vLLM)
+        png = normalize(data, file.content_type or "", file.filename or "")[0]
+        c = vlm.count_products(png)
+        recognized_name = c.get("name")
+        count = c.get("count")
+    except (httpx.HTTPError, ValueError, KeyError):
+        pass
+
+    return RecognizeOut(
+        matches=[RecognizeMatch(**m) for m in matches],
+        recognized_name=recognized_name,
+        count=count,
     )
-    scored = [
-        ProductMatch(product=ProductOut.model_validate(pr), score=round(cosine(query_vec, pr.embedding), 4))
-        for pr in products
-    ]
-    scored.sort(key=lambda m: m.score, reverse=True)
-    return scored[:top]
 
 
 @router.get("/stock", response_model=list[StockOut])
@@ -80,13 +137,16 @@ def stock(
     db: Session = Depends(get_db),
 ) -> list[StockOut]:
     rows = db.execute(
-        select(Stock, Product.name)
+        select(Stock, Product.name, Product.barcode)
         .join(Product, Product.id == Stock.product_id)
         .where(Stock.organization_id == p.org_id)
     ).all()
     return [
-        StockOut(product_id=s.product_id, name=name, quantity=s.quantity)
-        for s, name in rows
+        StockOut(
+            product_id=s.product_id, name=name, barcode=barcode,
+            quantity=s.quantity, price=s.avg_price, last_price=s.last_price,
+        )
+        for s, name, barcode in rows
     ]
 
 

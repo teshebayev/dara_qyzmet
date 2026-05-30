@@ -1,7 +1,6 @@
 """Распознавание накладной через VLM (OpenAI-совместимый vLLM, Qwen2.5-VL).
 
-mock_vlm=true -> детерминированная заглушка (без GPU/модели), чтобы поднять
-весь проект одной командой. На GPU-машине: mock_vlm=false + vLLM с Qwen2.5-VL.
+Требуется поднятый vLLM с вижн-моделью (см. run_vllm.sh).
 Паттерн вызова взят из исходного репозитория Dara-Vision.
 """
 from __future__ import annotations
@@ -47,37 +46,40 @@ def _parse_json(text: str) -> dict:
         return json.loads(m.group(0))
 
 
-def _mock_invoice() -> Invoice:
-    """Реалистичная заглушка распознавания (одно поле с низкой уверенностью)."""
-    return Invoice(
-        supplier="ТОО «Молпром»",
-        supplier_bin="123456789012",
-        invoice_number="10482",
-        date="2026-05-30",
-        items=[
-            LineItemFactory("Молоко 3.2%, 1 л", "4870001112223", 20, 430),
-            LineItemFactory("Кефир 2.5%, 0.5 л", None, 30, 280),
-            LineItemFactory("Сметана 20%, 400 г", "4870001112247", 15, 560),
-            LineItemFactory("Творог 9%, 200 г", None, 24, 340),
-            LineItemFactory("Масло слив. 72.5%, 180 г", "4870001112261", 12, 790),
-        ],
-        grand_total=20 * 430 + 30 * 280 + 15 * 560 + 24 * 340 + 12 * 790,
-    )
+_COUNT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": ["string", "null"]},
+        "count": {"type": ["integer", "null"]},
+    },
+    "required": ["count"],
+}
 
 
-def LineItemFactory(name, article, qty, price):  # noqa: N802
-    from .domain import LineItem
-
-    return LineItem(
-        name=name, article=article, quantity=qty, unit_price=price, total=qty * price
-    )
+def count_products(png: bytes) -> dict:
+    """Сколько единиц товара на фото (VLM, guided JSON). Возвращает {name, count}."""
+    content = [
+        {"type": "text", "text":
+            "На фото товары (обычно одного вида). Верни СТРОГО JSON: "
+            "name — что за товар, count — сколько единиц видно на фото (целое число)."},
+        {"type": "image_url", "image_url": {"url": _data_url(png)}},
+    ]
+    payload = {
+        "model": settings.vlm_model,
+        "messages": [{"role": "user", "content": content}],
+        "temperature": 0,
+        "guided_json": _COUNT_SCHEMA,
+    }
+    url = settings.openai_base_url.rstrip("/") + "/chat/completions"
+    headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
+    with httpx.Client(timeout=settings.request_timeout) as client:
+        resp = client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+    return _parse_json(resp.json()["choices"][0]["message"]["content"])
 
 
 def recognize(pages: list[bytes]) -> tuple[Invoice, str]:
-    """Возвращает (Invoice, backend)."""
-    if settings.mock_vlm:
-        return _mock_invoice(), "mock"
-
+    """Возвращает (Invoice, backend). Требует поднятого vLLM."""
     content: list[dict] = [{"type": "text", "text": _PROMPT}]
     for png in pages:
         content.append({"type": "image_url", "image_url": {"url": _data_url(png)}})

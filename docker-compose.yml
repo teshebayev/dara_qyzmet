@@ -1,5 +1,6 @@
-# Dara Kyzmet — поднять одной командой:  docker compose up --build
-# (mock-режим VLM, работает без GPU). С реальной Qwen2.5-VL: см. профиль gpu ниже.
+# Dara Kyzmet — docker compose up --build
+# Сервисы: db (Postgres), qdrant (поиск товара), api, web, langfuse(+langfuse-db).
+# Распознавание накладной и агент требуют отдельно поднятого vLLM (см. run_vllm.sh).
 services:
 
   db:
@@ -20,6 +21,15 @@ services:
       timeout: 3s
       retries: 15
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: dara_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"          # REST/gRPC: поиск товара по каталогу (CLIP-эмбеддинги)
+    volumes:
+      - qdrant_data:/qdrant/storage
+
   api:
     build: ./backend
     container_name: dara_api
@@ -29,14 +39,17 @@ services:
       POSTGRES_HOST: db
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       SEED_DEMO: "true"
-      # VLM: по умолчанию mock (без GPU). Для реальной модели -> false + профиль gpu.
-      MOCK_VLM: ${MOCK_VLM:-true}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
       # vLLM запускается ОТДЕЛЬНЫМ скриптом (./run_vllm.sh) на хосте с GPU,
       # поэтому api ходит к нему через host.docker.internal (а не имя сервиса).
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://host.docker.internal:8000/v1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-dummy}
       VLM_MODEL: ${VLM_MODEL:-qwen}
       LLM_MODEL: ${LLM_MODEL:-qwen}
+      # Langfuse (наблюдаемость агента) — локальный self-hosted (см. сервис langfuse).
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-dara-local}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-dara-local}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
     extra_hosts:
       - "host.docker.internal:host-gateway"   # доступ к хосту из контейнера (Linux)
     ports:
@@ -44,6 +57,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      qdrant:
+        condition: service_started
+      langfuse:
+        condition: service_started
 
   web:
     build: ./frontend
@@ -54,11 +71,57 @@ services:
     depends_on:
       - api
 
+  # --- Langfuse (наблюдаемость агента), self-hosted v2 ---
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: dara_langfuse_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: dara_langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3001:3000"          # UI Langfuse: http://localhost:3001
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@langfuse-db:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3001
+      NEXTAUTH_SECRET: dara-langfuse-nextauth-secret
+      SALT: dara-langfuse-salt
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      TELEMETRY_ENABLED: "false"
+      # Безголовая инициализация: создаёт проект с известными ключами (их использует api)
+      LANGFUSE_INIT_ORG_ID: dara
+      LANGFUSE_INIT_ORG_NAME: Dara
+      LANGFUSE_INIT_PROJECT_ID: dara
+      LANGFUSE_INIT_PROJECT_NAME: "Dara Qyzmet"
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-dara-local
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-dara-local
+      LANGFUSE_INIT_USER_EMAIL: admin@dara.local
+      LANGFUSE_INIT_USER_NAME: Admin
+      LANGFUSE_INIT_USER_PASSWORD: darademo123
+
   # vLLM (Qwen2.5-VL) в compose НЕ описан намеренно — он поднимается отдельным
   # скриптом ./run_vllm.sh на машине с GPU. api обращается к нему по
-  # host.docker.internal:8000. Для боевого инференса:
+  # host.docker.internal:8000. Перед стартом приложения:
   #   1) bash run_vllm.sh                      # отдельный терминал, ждём загрузки модели
-  #   2) MOCK_VLM=false docker compose up --build
+  #   2) docker compose up --build
 
 volumes:
   pgdata:
+  qdrant_data:
+  langfuse_pgdata:

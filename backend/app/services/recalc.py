@@ -38,9 +38,11 @@ def compute_delta(d: Discrepancy) -> Decimal:
 
 
 def invoice_original_sum(invoice: Invoice) -> Decimal:
-    """Сумма по накладной: заявленный итог либо Σ по позициям."""
-    if invoice.total_sum is not None:
-        return money(invoice.total_sum)
+    """Сумма по накладной = Σ(кол-во × цена) по позициям.
+
+    Считаем по строкам (а не по заявленному total_sum), чтобы «По накладной»
+    в акте совпадала с экраном приёмки и пересчёт к оплате был согласован.
+    """
     return money(sum((line_total(i.qty, i.price) for i in invoice.items), Decimal(0)))
 
 
