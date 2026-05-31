@@ -1,10 +1,8 @@
-"""Инструменты агентов. Все читают только данные тенанта (organization_id).
-
-Паттерны запросов взяты из существующего routers/agent.py (get_stock и т.п.)
-и расширены аналитикой и поиском по фото через Qdrant.
-
-В этом каркасе функции принимают `db` (SQLAlchemy Session) и `org_id`.
-При интеграции в dara_qyzmet импортируйте модели из ..models.
+"""Инструменты агента. КАЖДЫЙ инструмент делает РЕАЛЬНЫЙ запрос к БД (PostgreSQL
+через SQLAlchemy) и возвращает живые данные тенанта — заглушек/моков нет.
+Поиск товара по фото идёт в Qdrant (CLIP-эмбеддинги). Все запросы изолированы
+по organization_id / store_org_id. Результат уходит ReAct-агенту как Observation,
+по которому модель формулирует ответ (см. agent/function_calling.py).
 """
 from __future__ import annotations
 
@@ -23,14 +21,19 @@ def tool_get_stock(db: Any, org_id: str, query: str | None = None) -> list[dict]
     from sqlalchemy import select
     from ..models import Product, Stock
 
-    stmt = (
+    base = (
         select(Product.name, Stock.quantity)
         .join(Stock, Stock.product_id == Product.id)
         .where(Stock.organization_id == org_id)
     )
-    if query:
-        stmt = stmt.where(Product.name.ilike(f"%{query}%"))
-    return [{"name": n, "quantity": float(q)} for n, q in db.execute(stmt).all()]
+    stmt = base.where(Product.name.ilike(f"%{query}%")) if query else base
+    rows = db.execute(stmt).all()
+    # Слабая LLM могла прислать перевод/транслит/опечатку («milk» вместо «молоко»),
+    # тогда фильтр даёт пусто и агент ложно отвечает «товара нет». Подстраховка:
+    # на пустой результат с фильтром отдаём весь сток — модель сама найдёт позицию.
+    if query and not rows:
+        rows = db.execute(base).all()
+    return [{"name": n, "quantity": float(q)} for n, q in rows]
 
 
 def tool_low_stock(db: Any, org_id: str, threshold: float = 10.0) -> list[dict]:
@@ -49,17 +52,50 @@ def tool_low_stock(db: Any, org_id: str, threshold: float = 10.0) -> list[dict]:
 
 # ---------- Агент аналитики ----------
 
-def tool_discrepancy_report(db: Any, org_id: str, dtype: str | None = None) -> list[dict]:
-    """Сводка расхождений по типам (shortage|surplus|misgrade|defect)."""
+def tool_discrepancy_report(db: Any, org_id: str, dtype: str | None = None) -> dict:
+    """Расхождения приёмки для организации: сводка по типам + детализация по
+    позициям (с названиями товаров) — чтобы агент мог отвечать и «сколько брака»,
+    и «в каких именно позициях»."""
     from sqlalchemy import func, select
-    from ..models import Discrepancy
+    from ..models import Acceptance, Discrepancy, InvoiceItem, Order, Product
 
-    rows = db.execute(
+    # сводка по типам
+    type_rows = db.execute(
         select(Discrepancy.type, func.count(), func.coalesce(func.sum(Discrepancy.amount_delta), 0))
+        .join(Acceptance, Acceptance.id == Discrepancy.acceptance_id)
+        .join(Order, Order.id == Acceptance.order_id)
+        .where(Order.store_org_id == org_id)
         .group_by(Discrepancy.type)
     ).all()
-    out = [{"type": t, "count": c, "amount_delta": float(s)} for t, c, s in rows]
-    return [r for r in out if (not dtype or r["type"] == dtype)]
+    by_type = [{"type": t, "count": c, "amount_delta": float(s)} for t, c, s in type_rows]
+
+    # детализация по позициям (имя берём из строки накладной или каталога)
+    item_rows = db.execute(
+        select(
+            Discrepancy.type, InvoiceItem.name, Product.name,
+            Discrepancy.qty_defect, Discrepancy.qty_expected, Discrepancy.qty_actual,
+            Discrepancy.amount_delta,
+        )
+        .join(Acceptance, Acceptance.id == Discrepancy.acceptance_id)
+        .join(Order, Order.id == Acceptance.order_id)
+        .join(InvoiceItem, InvoiceItem.id == Discrepancy.invoice_item_id, isouter=True)
+        .join(Product, Product.id == Discrepancy.product_id, isouter=True)
+        .where(Order.store_org_id == org_id)
+    ).all()
+    items = []
+    for t, iname, pname, qd, qe, qa, delta in item_rows:
+        if qd is not None:
+            qty = float(qd)
+        elif qa is not None and qe is not None:
+            qty = abs(float(qe) - float(qa))
+        else:
+            qty = None
+        items.append({"item": iname or pname or "—", "type": t, "qty": qty, "amount_delta": float(delta)})
+
+    if dtype:
+        by_type = [r for r in by_type if r["type"] == dtype]
+        items = [r for r in items if r["type"] == dtype]
+    return {"by_type": by_type, "items": items}
 
 
 def tool_top_products(db: Any, org_id: str, limit: int = 5) -> list[dict]:
@@ -415,5 +451,7 @@ def build_order_draft(db: Any, org_id: str, raw_items: list[dict], supplier: dic
     return draft, missing
 
 
-# Инструменты вызываются либо детерминированными узлами (mock, agent/graph.py),
-# детерминированными узлами графа по интенту от NLU (agent/nlu.py, agent/graph.py).
+# Инструменты вызывает ReAct-агент (agent/function_calling.py): модель выбирает
+# инструмент и аргументы, мы выполняем запрос к БД и возвращаем результат как
+# Observation. Запись (создание заявки) — только tool_create_order_draft и только
+# после подтверждения пользователем; LLM сама в БД не пишет.

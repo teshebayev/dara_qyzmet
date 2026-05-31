@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width:1280px; height:720px;
+  overflow:hidden; background:transparent;
+  font-family:'Inter',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── header ── */
+.hdr {
+  position:absolute; left:72px; top:44px; z-index:20;
+  pointer-events:none;
+}
+.hdr-eye {
+  font-size:11px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:#9db5a4; margin-bottom:5px;
+}
+.hdr-title {
+  font-size:42px; font-weight:800; line-height:1.08;
+  letter-spacing:-.03em; color:#0d1f16;
+}
+.grad {
+  background:linear-gradient(135deg,#1a8c4e,#0fa866);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* ── left text block ── */
+.txt-left {
+  position:absolute;
+  left:36px; top:130px;
+  width:192px;
+  z-index:5;
+}
+
+/* ── right text block ── */
+.txt-right {
+  position:absolute;
+  right:36px; top:130px;
+  width:192px;
+  z-index:5;
+}
+
+/* text card */
+.tcard {
+  background:rgba(255,255,255,0.72);
+  border:1px solid rgba(26,140,78,0.12);
+  border-radius:14px;
+  padding:14px 15px;
+  box-shadow:0 8px 24px rgba(13,31,22,0.06);
+  margin-bottom:10px;
+}
+.tcard:last-child { margin-bottom:0; }
+.tcard-ch {
+  font-size:9.5px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.1em; margin-bottom:7px;
+}
+.tcard-ch.web { color:#1a8c4e; }
+.tcard-ch.tg  { color:#2aabee; }
+.tcard-ch.app { color:#0fa866; }
+.tcard-title {
+  font-size:13px; font-weight:800; color:#0d1f16;
+  line-height:1.3; margin-bottom:5px;
+}
+.tcard-desc {
+  font-size:11px; line-height:1.55; color:#5b7265; margin-bottom:8px;
+}
+.tcard-list { display:flex; flex-direction:column; gap:4px; }
+.tcard-item {
+  display:flex; align-items:flex-start; gap:6px;
+  font-size:10.5px; color:#5b7265; line-height:1.4;
+}
+.dot {
+  width:5px; height:5px; border-radius:50%;
+  flex-shrink:0; margin-top:4px;
+}
+.dot.g  { background:#1a8c4e; }
+.dot.b  { background:#2aabee; }
+.dot.lg { background:#0fa866; }
+
+/* ── devices area: absolutely centered ── */
+.devices {
+  position:absolute;
+  left:240px; right:240px;
+  bottom:18px; top:110px;
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:14px;
+}
+
+/* ── LAPTOP ── */
+.laptop-wrap { flex-shrink:0; opacity:0; }
+.lid {
+  width:430px; height:268px;
+  position:relative;
+}
+.lid-body {
+  width:100%; height:100%;
+  background:linear-gradient(145deg,#2e2e2e,#1a1a1a);
+  border-radius:14px;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.07),0 28px 70px rgba(0,0,0,0.45);
+  overflow:hidden;
+  position:relative;
+}
+.lid-body::before {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.04) 0%,transparent 50%);
+}
+.screen-frame {
+  position:absolute; inset:9px;
+  background:#000; border-radius:9px; overflow:hidden;
+}
+.screen-content {
+  width:100%; height:100%;
+  background:#f9fbf9; display:flex;
+}
+/* sidebar */
+.sc-sb {
+  width:106px; flex-shrink:0;
+  background:#fff; border-right:1px solid #e8efe9;
+  padding:9px 0; display:flex; flex-direction:column; gap:2px;
+}
+.sc-logo {
+  display:flex; align-items:center; gap:5px;
+  padding:0 8px 7px; border-bottom:1px solid #e8efe9; margin-bottom:5px;
+}
+.sc-lmark {
+  width:18px; height:18px; border-radius:5px;
+  background:linear-gradient(140deg,#0fa866,#1a8c4e);
+  display:grid; place-items:center;
+  color:#fff; font-size:6px; font-weight:900;
+}
+.sc-lname { font-size:9px; font-weight:800; color:#0d1f16; }
+.sc-lname b { color:#1a8c4e; }
+.sc-mlbl { font-size:6px; font-weight:700; color:#9db5a4; text-transform:uppercase; letter-spacing:.06em; padding:0 8px; }
+.sc-nav {
+  font-size:9px; font-weight:500; color:#4a6e57;
+  padding:4px 8px; border-radius:5px; margin:0 3px;
+}
+.sc-nav.on { background:#e8f5ee; color:#1a8c4e; font-weight:700; }
+.sc-usr {
+  margin-top:auto; padding:6px 7px 0;
+  border-top:1px solid #e8efe9;
+  display:flex; align-items:center; gap:5px;
+}
+.sc-uav {
+  width:16px; height:16px; border-radius:50%;
+  background:linear-gradient(140deg,#0fa866,#1a8c4e);
+  display:grid; place-items:center;
+  color:#fff; font-size:5.5px; font-weight:800; flex-shrink:0;
+}
+.sc-uname { font-size:7px; font-weight:700; color:#0d1f16; }
+.sc-urole { font-size:6px; color:#9db5a4; }
+/* main */
+.sc-main {
+  flex:1; padding:8px 10px;
+  display:flex; flex-direction:column; gap:7px; background:#f9fbf9;
+}
+.sc-hdr { display:flex; align-items:center; justify-content:space-between; }
+.sc-ptitle { font-size:11px; font-weight:800; color:#0d1f16; }
+.sc-halyk {
+  font-size:6.5px; font-weight:700; color:#1a8c4e;
+  background:#e8f5ee; border:1px solid rgba(26,140,78,.2);
+  padding:2px 6px; border-radius:999px;
+}
+.sc-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+.sc-chip {
+  background:#fff; border:1px solid #e2ede5; border-radius:5px;
+  padding:3px 5px; border-left:2px solid #ccc;
+}
+.sc-chip.g { border-left-color:#1a8c4e; }
+.sc-chip.o { border-left-color:#e0902a; }
+.sc-clbl { font-size:5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9db5a4; }
+.sc-cnum { font-size:12px; font-weight:900; color:#0d1f16; line-height:1.1; }
+.sc-csub { font-size:5.5px; color:#9db5a4; }
+.sc-cards { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:4px; flex:1; }
+.sc-card {
+  border-radius:6px; padding:6px 8px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:#1a8c4e;
+}
+.sc-card.dk { background:#157a41; }
+.sc-ctitle { font-size:6.5px; font-weight:900; color:#fff; letter-spacing:.01em; }
+.sc-csub2  { font-size:5.5px; color:rgba(255,255,255,.7); margin-top:1px; }
+.sc-cemo   { font-size:17px; opacity:.9; }
+
+.base {
+  width:430px; height:38px;
+  background:linear-gradient(180deg,#2a2a2a,#1e1e1e);
+  border-radius:0 0 12px 12px;
+  box-shadow:0 14px 36px rgba(0,0,0,0.4);
+  position:relative; overflow:hidden;
+}
+.base::before {
+  content:''; position:absolute; left:50%; top:7px; transform:translateX(-50%);
+  width:280px; height:20px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0px,rgba(255,255,255,.07) 16px,transparent 16px,transparent 20px);
+  border-radius:3px;
+}
+.base::after {
+  content:''; position:absolute; left:50%; bottom:5px; transform:translateX(-50%);
+  width:64px; height:8px; border-radius:4px;
+  background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.05);
+}
+.base-foot {
+  width:448px; height:4px; margin:0 auto;
+  background:linear-gradient(90deg,transparent,#3a3a3a,transparent);
+  border-radius:0 0 4px 4px;
+}
+
+/* ── PHONES ── */
+.phones-wrap { display:flex; gap:12px; align-items:flex-end; flex-shrink:0; opacity:0; }
+.phone-outer { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.phone {
+  width:150px;
+  background:linear-gradient(145deg,#2c2c2c,#1a1a1a);
+  border-radius:26px; padding:7px 5px;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.07),0 22px 55px rgba(0,0,0,0.42);
+  position:relative;
+}
+.phone::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,transparent 50%);
+  border-radius:26px; pointer-events:none;
+}
+.phone::after {
+  content:''; position:absolute; right:-3px; top:55px;
+  width:3px; height:36px; border-radius:2px;
+  background:#333; box-shadow:0 46px 0 #333;
+}
+.ph-notch {
+  width:64px; height:13px; margin:0 auto 4px;
+  background:#000; border-radius:999px;
+}
+.ph-screen { border-radius:18px; overflow:hidden; height:235px; }
+
+/* tg screen */
+.tg-scr {
+  background:linear-gradient(160deg,#1e3a5f,#162840);
+  height:100%; display:flex; flex-direction:column;
+}
+.tg-top {
+  background:rgba(255,255,255,.06); padding:7px 9px;
+  display:flex; align-items:center; gap:6px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.tg-av {
+  width:24px; height:24px; border-radius:50%;
+  background:linear-gradient(140deg,#2aabee,#1a7ab5);
+  display:grid; place-items:center;
+  color:#fff; font-size:7.5px; font-weight:800;
+}
+.tg-name   { font-size:9.5px; font-weight:700; color:#fff; }
+.tg-status { font-size:8px; color:#2aabee; }
+.tg-body   { flex:1; padding:7px; background:#eef5f0; display:flex; flex-direction:column; gap:4px; }
+.tg-bbl {
+  max-width:82%; font-size:8.5px; line-height:1.4; color:#0d1f16;
+  padding:5px 7px; border-radius:9px;
+  background:#fff; box-shadow:0 1px 3px rgba(13,31,22,.07);
+}
+.tg-bbl.u  { align-self:flex-end; background:#2aabee; color:#fff; }
+.tg-bbl.w  { background:#fff4e6; color:#b36200; }
+.tg-btns   { display:flex; gap:5px; margin-top:1px; }
+.tg-btn {
+  flex:1; background:#2aabee; color:#fff;
+  font-size:8px; font-weight:700; text-align:center;
+  padding:5px 3px; border-radius:6px;
+}
+
+/* app screen */
+.app-scr {
+  background:linear-gradient(160deg,#0d2016,#071208);
+  height:100%; display:flex; flex-direction:column;
+}
+.app-top {
+  padding:7px 9px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid rgba(26,140,78,.2);
+}
+.app-lrow  { display:flex; align-items:center; gap:5px; }
+.app-mark  {
+  width:19px; height:19px; border-radius:5px;
+  background:linear-gradient(140deg,#0fa866,#1a8c4e);
+  display:grid; place-items:center;
+  color:#fff; font-size:6.5px; font-weight:900;
+}
+.app-ttl   { font-size:9.5px; font-weight:800; color:#fff; }
+.app-body  { flex:1; padding:7px; display:flex; flex-direction:column; gap:5px; }
+.app-stats { display:flex; gap:4px; }
+.app-stat  {
+  flex:1; background:rgba(26,140,78,.12); border:1px solid rgba(26,140,78,.2);
+  border-radius:6px; padding:4px 3px; text-align:center;
+}
+.app-snum { font-size:12px; font-weight:900; color:#0fa866; line-height:1; }
+.app-slbl { font-size:6px; color:rgba(255,255,255,.4); margin-top:1px; }
+.app-scan {
+  background:linear-gradient(135deg,#0fa866,#1a8c4e);
+  color:#fff; font-size:8.5px; font-weight:700;
+  padding:6px 7px; border-radius:8px; text-align:center;
+}
+.app-ltitle { font-size:7px; font-weight:700; color:rgba(255,255,255,.35); text-transform:uppercase; letter-spacing:.05em; }
+.app-item {
+  display:flex; align-items:center; gap:5px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(26,140,78,.15);
+  border-radius:6px; padding:4px 6px;
+}
+.app-dot   { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.app-dot.g { background:#1a8c4e; box-shadow:0 0 4px rgba(26,140,78,.5); }
+.app-dot.o { background:#e0902a; }
+.app-iname { font-size:8px; font-weight:700; color:#fff; }
+.app-isub  { font-size:6.5px; color:rgba(255,255,255,.35); }
+.app-isum  { font-size:7.5px; font-weight:700; color:#0fa866; margin-left:auto; }
+.app-nav {
+  display:flex; justify-content:space-around;
+  border-top:1px solid rgba(26,140,78,.15); padding:5px 0;
+  margin:0 -7px -7px;
+}
+.app-nico  { font-size:13px; opacity:.35; }
+.app-nico.on { opacity:1; }
+
+.ph-home {
+  height:18px; display:flex; align-items:center; justify-content:center; margin-top:4px;
+}
+.ph-home::after {
+  content:''; width:44px; height:3px; border-radius:999px;
+  background:rgba(255,255,255,.18);
+}
+.ph-lbl {
+  font-size:10.5px; font-weight:700;
+  padding:5px 13px; border-radius:999px;
+}
+.lbl-tg  { background:rgba(42,171,238,.14); border:1px solid rgba(42,171,238,.28); color:#2aabee; }
+.lbl-app { background:rgba(15,168,102,.14); border:1px solid rgba(15,168,102,.28); color:#0fa866; }
+
+/* entrance fade-up */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* float — стартует сразу с translateY(0), едет вверх и обратно */
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-7px); }
+  100% { transform: translateY(0px); }
+}
+
+/* text blocks */
+.txt-left  { animation: fadeUp 0.7s ease-out 0.1s both; }
+.txt-right { animation: fadeUp 0.7s ease-out 0.5s both; }
+
+/* devices: сначала fadeUp, потом float — через animation-delay */
+#laptopWrap {
+  animation:
+    fadeUp 0.8s ease-out 0.2s both,
+    float  4s  ease-in-out 1.1s infinite;
+}
+#phonesWrap {
+  animation: fadeUp 0.7s ease-out 0.4s both;
+}
+#tgPhone {
+  animation: float 4s ease-in-out 1.1s infinite;
+}
+#appPhone {
+  animation: float 4s ease-in-out 1.1s infinite;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-eye">04 · ТРИ КАНАЛА</div>
+  <div class="hdr-title">Один продукт — <span class="grad">три точки входа</span></div>
+</div>
+
+<!-- LEFT TEXT -->
+<div class="txt-left" id="colLeft">
+  <div class="tcard">
+    <div class="tcard-ch web">🖥 Веб-кабинет</div>
+    <div class="tcard-title">Полный контроль поставок</div>
+    <div class="tcard-desc">Браузерный кабинет для магазина и поставщика</div>
+    <div class="tcard-list">
+      <div class="tcard-item"><div class="dot g"></div>Создать заявку на приёмку</div>
+      <div class="tcard-item"><div class="dot g"></div>OCR-сканирование накладной</div>
+      <div class="tcard-item"><div class="dot g"></div>Аналитика и остатки</div>
+      <div class="tcard-item"><div class="dot g"></div>AI-помощник по складу</div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT TEXT -->
+<div class="txt-right" id="colRight">
+  <div class="tcard">
+    <div class="tcard-ch tg">✈️ Telegram Bot</div>
+    <div class="tcard-title">Приёмка прямо в чате</div>
+    <div class="tcard-desc">Отправь фото — бот распознает и проверит</div>
+    <div class="tcard-list">
+      <div class="tcard-item"><div class="dot b"></div>OCR фото и PDF</div>
+      <div class="tcard-item"><div class="dot b"></div>Расхождения → акт</div>
+      <div class="tcard-item"><div class="dot b"></div>Без установки ПО</div>
+    </div>
+  </div>
+  <div class="tcard">
+    <div class="tcard-ch app">📱 Приложение</div>
+    <div class="tcard-title">Склад в кармане</div>
+    <div class="tcard-desc">Мобильный доступ к заявкам и остаткам</div>
+    <div class="tcard-list">
+      <div class="tcard-item"><div class="dot lg"></div>Сканировать с камеры</div>
+      <div class="tcard-item"><div class="dot lg"></div>История приёмок</div>
+      <div class="tcard-item"><div class="dot lg"></div>Push-уведомления</div>
+    </div>
+  </div>
+</div>
+
+<!-- DEVICES -->
+<div class="devices">
+
+  <!-- LAPTOP -->
+  <div class="laptop-wrap" id="laptopWrap">
+    <div class="lid">
+      <div class="lid-body">
+        <div class="screen-frame">
+          <div class="screen-content">
+            <div class="sc-sb">
+              <div class="sc-logo">
+                <div class="sc-lmark">DQ</div>
+                <div class="sc-lname">Dara<b>Qyzmet</b></div>
+              </div>
+              <div class="sc-mlbl">МЕНЮ</div>
+              <div class="sc-nav on">🏠 Главная</div>
+              <div class="sc-nav">⚡ Заявки</div>
+              <div class="sc-nav">⤴ Сканировать</div>
+              <div class="sc-nav">📦 Товары</div>
+              <div class="sc-nav">📊 Остатки</div>
+              <div class="sc-nav">✦ AI-помощник</div>
+              <div class="sc-usr">
+                <div class="sc-uav">АК</div>
+                <div>
+                  <div class="sc-uname">Алексей Карумова</div>
+                  <div class="sc-urole">Магазин</div>
+                </div>
+              </div>
+            </div>
+            <div class="sc-main">
+              <div class="sc-hdr">
+                <span class="sc-ptitle">Главная</span>
+                <span class="sc-halyk">Halyk Ecosystem</span>
+              </div>
+              <div class="sc-stats">
+                <div class="sc-chip"><div class="sc-clbl">ВСЕГО ЗАЯВОК</div><div class="sc-cnum">11</div><div class="sc-csub">за всё время</div></div>
+                <div class="sc-chip"><div class="sc-clbl">ЗАЯВОК СЕГОДНЯ</div><div class="sc-cnum">0</div><div class="sc-csub">создано сегодня</div></div>
+                <div class="sc-chip g"><div class="sc-clbl">ПРИНЯТО</div><div class="sc-cnum">7</div><div class="sc-csub">приёмок</div></div>
+                <div class="sc-chip o"><div class="sc-clbl">В СТОКЕ</div><div class="sc-cnum">15</div><div class="sc-csub">позиций</div></div>
+              </div>
+              <div class="sc-cards">
+                <div class="sc-card"><div><div class="sc-ctitle">СОЗДАТЬ ЗАЯВКУ</div><div class="sc-csub2">AI распознаёт позиции</div></div><div class="sc-cemo">📝</div></div>
+                <div class="sc-card"><div><div class="sc-ctitle">МОИ ЗАЯВКИ</div><div class="sc-csub2">Просмотр статусов</div></div><div class="sc-cemo">🗂️</div></div>
+                <div class="sc-card dk"><div><div class="sc-ctitle">СКАНИРОВАТЬ</div><div class="sc-csub2">OCR фото и PDF</div></div><div class="sc-cemo">📄</div></div>
+                <div class="sc-card dk"><div><div class="sc-ctitle">ПОСТАВКИ НА СКЛАД</div><div class="sc-csub2">История накладных</div></div><div class="sc-cemo">📦</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="base"></div>
+    <div class="base-foot"></div>
+  </div>
+
+  <!-- PHONES -->
+  <div class="phones-wrap" id="phonesWrap">
+
+    <div class="phone-outer" id="tgPhone">
+      <div class="phone">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="tg-scr">
+            <div class="tg-top">
+              <div class="tg-av">DQ</div>
+              <div>
+                <div class="tg-name">DaraQyzmet Bot</div>
+                <div class="tg-status">● онлайн</div>
+              </div>
+            </div>
+            <div class="tg-body">
+              <div class="tg-bbl">Отправьте фото или PDF накладной</div>
+              <div class="tg-bbl u">📎 nakladnaya.pdf</div>
+              <div class="tg-bbl">✅ Распознано 24 позиции<br/>Сумма: 1 245 600 ₸</div>
+              <div class="tg-bbl w">⚠️ Недостача по 2 позициям</div>
+              <div class="tg-btns">
+                <div class="tg-btn">✓ Принять</div>
+                <div class="tg-btn">📄 Акт</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ph-home"></div>
+      </div>
+      <div class="ph-lbl lbl-tg">✈️ Telegram Bot</div>
+    </div>
+
+    <div class="phone-outer" id="appPhone">
+      <div class="phone">
+        <div class="ph-notch"></div>
+        <div class="ph-screen">
+          <div class="app-scr">
+            <div class="app-top">
+              <div class="app-lrow">
+                <div class="app-mark">DQ</div>
+                <div class="app-ttl">DaraQyzmet</div>
+              </div>
+              <div>🔔</div>
+            </div>
+            <div class="app-body">
+              <div class="app-stats">
+                <div class="app-stat"><div class="app-snum">11</div><div class="app-slbl">Заявок</div></div>
+                <div class="app-stat"><div class="app-snum">7</div><div class="app-slbl">Принято</div></div>
+                <div class="app-stat"><div class="app-snum">15</div><div class="app-slbl">В стоке</div></div>
+              </div>
+              <div class="app-scan">📷 Сканировать накладную</div>
+              <div class="app-ltitle">Последние заявки</div>
+              <div class="app-item">
+                <div class="app-dot g"></div>
+                <div><div class="app-iname">Накладная #1252</div><div class="app-isub">Принято · 24 позиции</div></div>
+                <div class="app-isum">1 245 600 ₸</div>
+              </div>
+              <div class="app-item">
+                <div class="app-dot o"></div>
+                <div><div class="app-iname">Накладная #1251</div><div class="app-isub">Расхождение · 3 позиции</div></div>
+                <div class="app-isum">892 000 ₸</div>
+              </div>
+              <div class="app-nav">
+                <div class="app-nico on">🏠</div>
+                <div class="app-nico">📊</div>
+                <div class="app-nico">📦</div>
+                <div class="app-nico">👤</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ph-home"></div>
+      </div>
+      <div class="ph-lbl lbl-app">📱 Приложение</div>
+    </div>
+
+  </div><!-- /phones-wrap -->
+</div><!-- /devices -->
+
+</body>
+</html>

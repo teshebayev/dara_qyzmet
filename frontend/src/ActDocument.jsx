@@ -44,8 +44,8 @@ const ActDocument = forwardRef(function ActDocument(
         <tbody>
           <tr><td>Место составления акта:</td><td>{meta.place}</td></tr>
           <tr><td>Принят и осмотрен груз от:</td><td>«{meta.day}» {meta.monthName} {meta.year} г.</td></tr>
-          <tr><td>Отправитель:</td><td>{meta.sender}</td></tr>
-          <tr><td>Получатель:</td><td>{meta.receiver}</td></tr>
+          <tr><td>Отправитель:</td><td>{meta.sender}{meta.senderBin && meta.senderBin !== "—" ? `, БИН ${meta.senderBin}` : ""}</td></tr>
+          <tr><td>Получатель:</td><td>{meta.receiver}{meta.receiverBin && meta.receiverBin !== "—" ? `, БИН ${meta.receiverBin}` : ""}</td></tr>
           <tr><td>Условия хранения продукции на складе получателя:</td><td>соответствуют нормам</td></tr>
           <tr><td>Состояние тары и упаковки в момент осмотра, количество мест:</td><td>{meta.places} мест — без повреждений</td></tr>
         </tbody>

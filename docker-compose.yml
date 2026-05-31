@@ -71,6 +71,21 @@ services:
     depends_on:
       - api
 
+  # --- Telegram-бот приёмки (фронт поверх API). Запуск: docker compose --profile bot up -d bot ---
+  bot:
+    build: ./backend
+    container_name: dara_bot
+    restart: unless-stopped
+    profiles: ["bot"]
+    entrypoint: ["python", "-m", "app.bot.main"]
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      API_BASE_URL: ${BOT_API_BASE_URL:-http://api:8000/api/v1}
+      # Публичный HTTPS-URL (туннель к api) для Mini App с камерой; пусто -> загрузка фото
+      BOT_PUBLIC_URL: ${BOT_PUBLIC_URL:-}
+    depends_on:
+      - api
+
   # --- Langfuse (наблюдаемость агента), self-hosted v2 ---
   langfuse-db:
     image: postgres:16-alpine

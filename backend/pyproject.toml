@@ -26,6 +26,8 @@ dependencies = [
     "fastembed>=0.5",
     # --- наблюдаемость агента (опц.); SDK v2 под self-hosted Langfuse v2 ---
     "langfuse>=2.0,<3",
+    # --- Telegram-бот приёмки (фронт поверх API) ---
+    "python-telegram-bot>=21.0",
 ]
 
 [build-system]
@@ -34,3 +36,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

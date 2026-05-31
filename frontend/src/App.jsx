@@ -88,8 +88,8 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">D</div>
-          <div className="brand-text">Dara <span>Qyzmet</span></div>
+          <img className="brand-logo" src="/logo.svg" alt="DaraQyzmet" />
+          <div className="brand-text">Dara<span>Qyzmet</span></div>
         </div>
 
         <div className="sidebar-section">
@@ -125,7 +125,6 @@ export default function App() {
           <span className="page-title">{TITLES[view.name] || ""}</span>
           <div className="topbar-right">
             <span className="halyk-badge">Halyk Ecosystem</span>
-            <span className="demo-badge">DEMO</span>
           </div>
         </header>
 

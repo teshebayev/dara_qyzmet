@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <!-- ручка сумки -->
+  <path d="M23 27 v-4 a9 9 0 0 1 18 0 v4" stroke="#2faf5f" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+  <!-- корпус сумки -->
+  <path d="M16 27 h32 a3 3 0 0 1 3 3 v17 a6 6 0 0 1 -6 6 H19 a6 6 0 0 1 -6 -6 V30 a3 3 0 0 1 3 -3 Z"
+        stroke="#2faf5f" stroke-width="3.4" fill="none" stroke-linejoin="round"/>
+  <!-- коробка (тёмная) -->
+  <path d="M19 41 l8 -4.5 8 4.5 -8 4.5 Z" fill="#2b3138"/>
+  <path d="M19 41 v7 l8 4.5 v-7 Z" fill="#20262c"/>
+  <path d="M35 41 v7 l-8 4.5 v-7 Z" fill="#3a434d"/>
+  <!-- галочка -->
+  <path d="M33 43 l5 5 10 -11" stroke="#2faf5f" stroke-width="4.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

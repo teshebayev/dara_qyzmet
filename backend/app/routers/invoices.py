@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from decimal import Decimal
 
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import Principal, get_principal, require_role
-from ..models import Invoice, InvoiceItem, Order, Product
+from ..models import Counterparty, Invoice, InvoiceItem, Order, OrderItem, Organization, Product
 from ..schemas import (
     InvoiceCheckOut,
     InvoiceHeadPatch,
@@ -44,6 +45,88 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
+def _norm_bin(value: str | None) -> str | None:
+    """Оставляем только цифры; валидный БИН РК — ровно 12 цифр."""
+    digits = "".join(ch for ch in (value or "") if ch.isdigit())
+    return digits[:12] if len(digits) >= 12 else None
+
+
+def _fill_invoice_from_parsed(
+    invoice: Invoice, parsed, db: Session, org_id: uuid.UUID, filename: str
+) -> None:
+    """Шапка + позиции накладной из результата распознавания (общая логика
+    для приёмки по заявке и для скана без заявки)."""
+    invoice.supplier_name = parsed.supplier
+    invoice.invoice_number = parsed.invoice_number
+    invoice.invoice_date = _parse_date(parsed.date)
+    invoice.total_sum = parsed.grand_total
+    invoice.ocr_status = "done"
+    invoice.raw_ocr_json = parsed.model_dump()
+    invoice.source_file_url = f"upload://{filename}"
+    invoice.items = []
+    for li in parsed.items:
+        qty = li.quantity or 0
+        price = li.unit_price or 0
+        prod = _match_product(db, org_id, li.article)
+        invoice.items.append(
+            InvoiceItem(
+                product_id=prod.id if prod else None,
+                name=li.name or "—",
+                barcode=li.article,
+                qty=qty,
+                price=price,
+                line_total=line_total(qty, price),
+                # «уверенность» по полноте полей (для подсветки подозрительных строк)
+                confidence=0.95 if (li.name and li.quantity and li.unit_price) else 0.65,
+                was_edited=False,
+            )
+        )
+
+
+def _resolve_or_create_supplier(
+    db: Session, store_org_id: uuid.UUID, name: str | None, bin_raw: str | None
+) -> Organization:
+    """Найти поставщика по БИН/названию или создать нового, и привязать его
+    к магазину (Counterparty). Нужен для приёмки накладной без заявки."""
+    bin_ = _norm_bin(bin_raw)
+    org: Organization | None = None
+    if bin_:
+        org = (
+            db.query(Organization)
+            .filter(Organization.bin == bin_, Organization.org_type == "distributor")
+            .first()
+        )
+    if not org and name and name.strip():
+        org = (
+            db.query(Organization)
+            .filter(
+                Organization.org_type == "distributor",
+                Organization.name.ilike(name.strip()),
+            )
+            .first()
+        )
+    if not org:
+        org = Organization(
+            name=(name or "Неизвестный поставщик").strip()[:200] or "Неизвестный поставщик",
+            org_type="distributor",
+            bin=bin_,
+        )
+        db.add(org)
+        db.flush()  # нужен org.id для связи и заявки
+
+    link = (
+        db.query(Counterparty)
+        .filter(
+            Counterparty.store_org_id == store_org_id,
+            Counterparty.supplier_org_id == org.id,
+        )
+        .first()
+    )
+    if not link:
+        db.add(Counterparty(store_org_id=store_org_id, supplier_org_id=org.id))
+    return org
+
+
 @router.post("/orders/{order_id}/invoice/upload", response_model=InvoiceOut)
 async def upload_invoice(
     order_id: uuid.UUID,
@@ -73,34 +156,66 @@ async def upload_invoice(
 
     # создать/обновить накладную
     invoice = order.invoice or Invoice(order_id=order.id)
-    invoice.supplier_name = parsed.supplier
-    invoice.invoice_number = parsed.invoice_number
-    invoice.invoice_date = _parse_date(parsed.date)
-    invoice.total_sum = parsed.grand_total
-    invoice.ocr_status = "done"
-    invoice.raw_ocr_json = parsed.model_dump()
-    invoice.source_file_url = f"upload://{file.filename}"
-    invoice.items = []
-    for li in parsed.items:
-        qty = li.quantity or 0
-        price = li.unit_price or 0
-        prod = _match_product(db, p.org_id, li.article)
-        invoice.items.append(
-            InvoiceItem(
-                product_id=prod.id if prod else None,
-                name=li.name or "—",
-                barcode=li.article,
-                qty=qty,
-                price=price,
-                line_total=line_total(qty, price),
-                # «уверенность» в mock задаём по полноте полей (демо подсветки)
-                confidence=0.95 if (li.name and li.quantity and li.unit_price) else 0.65,
-                was_edited=False,
-            )
-        )
+    _fill_invoice_from_parsed(invoice, parsed, db, p.org_id, file.filename or "upload")
     db.add(invoice)
     if order.status == "shipped":
         order.status = "receiving"
+    db.commit()
+    db.refresh(invoice)
+    return invoice
+
+
+@router.post("/invoices/scan", response_model=InvoiceOut)
+async def scan_invoice(
+    file: UploadFile = File(...),
+    p: Principal = Depends(require_role("store")),
+    db: Session = Depends(get_db),
+) -> Invoice:
+    """Приёмка БЕЗ предварительной заявки: фото/PDF накладной → распознавание →
+    система сама находит/создаёт поставщика и заявку, прикрепляет накладную.
+    Дальше идёт обычный поток приёмки (проверка → расхождения → сток)."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Пустой файл")
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "Файл больше 25 МБ")
+
+    try:
+        pages = normalize(data, file.content_type or "", file.filename or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        parsed, backend = recognize(pages)
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Не удалось распознать накладную: модель (vLLM) недоступна") from e
+
+    supplier = _resolve_or_create_supplier(db, p.org_id, parsed.supplier, parsed.supplier_bin)
+
+    # Товар физически на руках — заявку создаём сразу в статусе приёмки.
+    order = Order(
+        store_org_id=p.org_id,
+        supplier_org_id=supplier.id,
+        status="receiving",
+        created_by=p.user_id,
+    )
+    # Позиции заявки повторяют распознанную накладную (заявка/ордер не пустые).
+    for li in parsed.items:
+        prod = _match_product(db, p.org_id, li.article)
+        order.items.append(
+            OrderItem(
+                product_id=prod.id if prod else None,
+                name=li.name or "—",
+                qty_ordered=Decimal(str(li.quantity or 0)),
+                price=Decimal(str(li.unit_price or 0)),
+            )
+        )
+    db.add(order)
+    db.flush()  # нужен order.id для накладной
+
+    invoice = Invoice(order_id=order.id)
+    _fill_invoice_from_parsed(invoice, parsed, db, p.org_id, file.filename or "scan")
+    db.add(invoice)
     db.commit()
     db.refresh(invoice)
     return invoice

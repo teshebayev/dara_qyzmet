@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -17,6 +17,7 @@ from ..models import (
     Invoice,
     InvoiceItem,
     Order,
+    Organization,
     Product,
     Stock,
 )
@@ -25,8 +26,11 @@ from ..schemas import (
     ActOut,
     CorrectedSumOut,
     DiscrepancyCreate,
+    ScanSessionIn,
+    ScanSessionOut,
 )
 from ..services.recalc import recompute
+from ..services.act_pdf import render_act_pdf
 
 router = APIRouter(prefix="/api/v1", tags=["acceptance"])
 
@@ -88,6 +92,87 @@ def _add_to_stock(db: Session, org_id: uuid.UUID, invoice: Invoice) -> None:
                 avg_price=price if price > 0 else Decimal("0"),
                 last_price=price if price > 0 else None,
             ))
+
+
+@router.post("/orders/{order_id}/scan-session", response_model=ScanSessionOut)
+def scan_session(
+    order_id: uuid.UUID,
+    body: ScanSessionIn,
+    p: Principal = Depends(require_role("store")),
+    db: Session = Depends(get_db),
+) -> ScanSessionOut:
+    """Приёмка из мобильного терминала (сканы вместо OCR-накладной).
+
+    Если накладной нет — создаём её из позиций заявки, открываем приёмку,
+    из непустых сканов формируем расхождения, принятое количество (qty_actual)
+    оприходуем в сток. Один вызов = завершённая приёмка.
+    """
+    order = _order_for_store(order_id, p, db)
+
+    invoice = order.invoice
+    if invoice is None:
+        invoice = Invoice(order_id=order.id, ocr_status="confirmed")
+        total = Decimal("0")
+        invoice.items = []
+        for it in order.items:
+            qty = Decimal(str(it.qty_ordered or 0))
+            price = Decimal(str(it.price or 0))
+            invoice.items.append(InvoiceItem(
+                product_id=it.product_id, name=it.name, qty=qty, price=price,
+                line_total=(qty * price).quantize(Decimal("0.01")),
+            ))
+            total += qty * price
+        invoice.total_sum = total.quantize(Decimal("0.01"))
+        db.add(invoice)
+        db.flush()
+
+    acc = Acceptance(order_id=order.id, invoice_id=invoice.id, status="in_progress")
+    db.add(acc)
+    db.flush()
+
+    by_pid = {str(i.product_id): i for i in invoice.items if i.product_id}
+    count = 0
+    for r in body.records:
+        item = by_pid.get(str(r.product_id)) if r.product_id else None
+        # принятое количество оприходуем в сток (правим qty позиции накладной)
+        if item is not None and r.qty_actual is not None:
+            item.qty = Decimal(str(r.qty_actual))
+        if r.status == "ok":
+            continue
+        price = item.price if item else Decimal("0")
+        qty_expected = item.qty if item else (Decimal(str(r.qty_ordered or 0)))
+        disc = Discrepancy(
+            acceptance_id=acc.id,
+            invoice_item_id=item.id if item else None,
+            product_id=r.product_id,
+            type=r.status,
+            price=price,
+            qty_expected=qty_expected,
+        )
+        if r.status in ("shortage", "surplus"):
+            disc.qty_actual = r.qty_actual
+        if r.status == "defect":
+            disc.qty_defect = r.qty_discrepancy if r.qty_discrepancy is not None else (
+                Decimal(str(qty_expected or 0)) - Decimal(str(r.qty_actual or 0)))
+            disc.photo_url = "scan-session"
+        db.add(disc)
+        count += 1
+
+    db.flush()
+    if count:
+        recompute(acc, invoice)
+
+    _add_to_stock(db, p.org_id, invoice)  # принятые qty -> сток
+    acc.status = "accepted"
+    acc.accepted_by = p.user_id
+    acc.accepted_at = datetime.utcnow()
+    order.status = "accepted"
+    db.commit()
+    db.refresh(acc)
+    return ScanSessionOut(
+        order_id=order.id, acceptance_id=acc.id, status=order.status,
+        discrepancies=count, accepted=True,
+    )
 
 
 @router.post("/orders/{order_id}/acceptance", response_model=AcceptanceOut)
@@ -209,6 +294,70 @@ def delete_discrepancy(
     db.commit()
     db.refresh(acc)
     return CorrectedSumOut(discrepancies=acc.discrepancies, **res)
+
+
+def _act_rows(acc: Acceptance, db: Session) -> list[dict]:
+    """Строки расхождений для печатной формы (разбивка излишек/недостача/брак/пересорт)."""
+    rows: list[dict] = []
+    for i, d in enumerate(acc.discrepancies, 1):
+        item = db.get(InvoiceItem, d.invoice_item_id) if d.invoice_item_id else None
+        doc = Decimal(str(d.qty_expected if d.qty_expected is not None
+                          else (item.qty if item else 0)))
+        actual = Decimal(str(d.qty_actual)) if d.qty_actual is not None else None
+        defect = Decimal(str(d.qty_defect)) if d.qty_defect is not None else Decimal("0")
+        row = {
+            "n": i,
+            "name": item.name if item else "—",
+            "qty_doc": doc,
+            "qty_fact": actual if actual is not None else (doc - defect),
+            "surplus": Decimal("0"), "shortage": Decimal("0"),
+            "defect": Decimal("0"), "regrade": Decimal("0"),
+        }
+        if d.type == "shortage" and actual is not None:
+            row["shortage"] = max(Decimal("0"), doc - actual)
+        elif d.type == "surplus" and actual is not None:
+            row["surplus"] = max(Decimal("0"), actual - doc)
+        elif d.type == "defect":
+            row["defect"] = defect
+        elif d.type == "misgrade" and actual is not None:
+            row["regrade"] = actual
+        rows.append(row)
+    return rows
+
+
+@router.get("/acceptance/{acc_id}/act.pdf")
+def get_act_pdf(
+    acc_id: uuid.UUID,
+    p: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Акт о расхождении в PDF (для скачивания из веба и Telegram-бота)."""
+    acc = _get_acceptance(acc_id, p, db)
+    invoice = db.get(Invoice, acc.invoice_id)
+    order = db.get(Order, acc.order_id)
+    sums = recompute(acc, invoice)
+
+    supplier = db.get(Organization, order.supplier_org_id) if order else None
+    receiver = db.get(Organization, order.store_org_id) if order else None
+    act = acc.act
+    meta = {
+        "number": act.number if act else f"ACT-{str(acc.id)[:8].upper()}",
+        "date": datetime.utcnow().strftime("%d.%m.%Y"),
+        "place": "г. Алматы",
+        "supplier": supplier.name if supplier else (invoice.supplier_name if invoice else "—"),
+        "supplier_bin": supplier.bin if supplier else None,
+        "receiver": receiver.name if receiver else "—",
+        "receiver_bin": receiver.bin if receiver else None,
+        "invoice_number": (invoice.invoice_number if invoice else None) or "—",
+    }
+    totals = {"doc_sum": sums["original_sum"], "pay_sum": sums["corrected_sum"]}
+
+    pdf = render_act_pdf(meta, _act_rows(acc, db), totals)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="akt-{meta["number"]}.pdf"'},
+    )
 
 
 @router.post("/acceptance/{acc_id}/act", response_model=ActOut)

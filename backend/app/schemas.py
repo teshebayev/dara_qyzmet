@@ -203,6 +203,26 @@ class DiscrepancyOut(BaseModel):
     comment: str | None
 
 
+class ScanRecordIn(BaseModel):
+    product_id: uuid.UUID | None = None
+    status: Literal["ok", "shortage", "surplus", "defect"]
+    qty_ordered: Decimal | None = None
+    qty_actual: Decimal | None = None
+    qty_discrepancy: Decimal | None = None
+
+
+class ScanSessionIn(BaseModel):
+    records: list[ScanRecordIn] = []
+
+
+class ScanSessionOut(BaseModel):
+    order_id: uuid.UUID
+    acceptance_id: uuid.UUID
+    status: str
+    discrepancies: int
+    accepted: bool
+
+
 class AcceptanceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

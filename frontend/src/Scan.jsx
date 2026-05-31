@@ -50,6 +50,7 @@ export default function Scan({ orderId, orders = [], onDone }) {
 
   const [lines, setLines]     = useState([]);
   const [act, setAct]         = useState(null);
+  const [receipt, setReceipt] = useState(null);   // реальные контрагенты (магазин/поставщик) из БД
   const [busy, setBusy]       = useState(false);
   const [err, setErr]         = useState("");
   const [exporting, setExporting] = useState(false);
@@ -68,21 +69,38 @@ export default function Scan({ orderId, orders = [], onDone }) {
     }).catch(() => {});
   }, []); // eslint-disable-line
 
+  // Реальные стороны (получатель-магазин + отправитель-поставщик) с их БИН берём
+  // с бэкенда, а не хардкодим — те же данные, что и в приходном ордере.
+  useEffect(() => {
+    const oid = order?.id || orderId;
+    if (!oid) { setReceipt(null); return; }
+    api(`/api/v1/orders/${oid}/receipt`).then(setReceipt).catch(() => setReceipt(null));
+  }, [order?.id, orderId]);
+
   async function loadCheck(invId) {
     try { setCheck(await api(`/api/v1/invoices/${invId}/check`)); }
     catch (_) { setCheck(null); }
   }
 
-  // Загрузка файла -> распознавание (vLLM) -> старт приёмки -> проверка
+  // Загрузка файла -> распознавание (vLLM) -> старт приёмки -> проверка.
+  // Если заявка не выбрана — идём по пути «скан без заявки»: бэкенд сам создаёт
+  // поставщика и заявку из распознанной накладной.
   async function recognize() {
-    const oid = order?.id || orderId;
-    if (!oid)  return setErr("Не выбрана заявка");
     if (!file) return setErr("Выберите файл накладной (фото или PDF)");
     setErr(""); setBusy(true);
     try {
       const fd = new FormData();
       fd.append("file", file, file.name);
-      const inv = await api(`/api/v1/orders/${oid}/invoice/upload`, { method: "POST", body: fd });
+      let oid = order?.id || orderId;
+      let inv;
+      if (oid) {
+        inv = await api(`/api/v1/orders/${oid}/invoice/upload`, { method: "POST", body: fd });
+      } else {
+        inv = await api(`/api/v1/invoices/scan`, { method: "POST", body: fd });
+        oid = inv.order_id;
+        // минимальный объект заявки для дальнейших шагов (акт, подтягивание контрагентов)
+        setOrder({ id: oid, status: "receiving", items: inv.items || [], created_at: new Date().toISOString() });
+      }
       const acc = await api(`/api/v1/orders/${oid}/acceptance`, { method: "POST" });
       setInvoice(inv);
       setAccId(acc.id);
@@ -189,8 +207,11 @@ export default function Scan({ orderId, orders = [], onDone }) {
     monthName: MONTHS[now.getMonth()],
     year: now.getFullYear(),
     place: "г. Алматы",
-    sender: (invoice?.supplier_name && invoice.supplier_name !== "null") ? invoice.supplier_name : "—",
-    receiver: "Магазин «Дара»",
+    sender: receipt?.supplier?.name
+      || ((invoice?.supplier_name && invoice.supplier_name !== "null") ? invoice.supplier_name : "—"),
+    senderBin: receipt?.supplier?.bin || "—",
+    receiver: receipt?.receiver?.name || "—",
+    receiverBin: receipt?.receiver?.bin || "—",
     places: computed.length,
   };
   const actTotals = act
@@ -219,7 +240,11 @@ export default function Scan({ orderId, orders = [], onDone }) {
       {err && <div className="err-msg">{err}</div>}
 
       {step === "select" && (
-        <SelectOrder orders={allOrders} onPick={(o) => { setOrder(o); setStep("upload"); }} />
+        <SelectOrder
+          orders={allOrders}
+          onPick={(o) => { setOrder(o); setStep("upload"); }}
+          onScanNew={() => { setOrder(null); setStep("upload"); }}
+        />
       )}
 
       {step === "upload" && (
@@ -230,6 +255,7 @@ export default function Scan({ orderId, orders = [], onDone }) {
               <h3>Распознавание накладной</h3>
               <p className="text-muted text-sm">
                 Загрузите фото или PDF накладной — модель Qwen2.5-VL извлечёт позиции, количество и цены.
+                {!order && !orderId && " Заявка не выбрана — система создаст её автоматически из накладной."}
               </p>
               <input
                 type="file" accept="image/*,application/pdf"
@@ -276,12 +302,21 @@ export default function Scan({ orderId, orders = [], onDone }) {
 
 // ── Подкомпоненты ───────────────────────────────────────────────────────────
 
-function SelectOrder({ orders, onPick }) {
+function SelectOrder({ orders, onPick, onScanNew }) {
   const eligible = orders.filter((o) => ["shipped", "receiving"].includes(o.status));
   const list = eligible.length ? eligible : orders;
   return (
     <div className="table-card" style={{ padding: 18 }}>
-      <div className="filter-title" style={{ marginBottom: 14 }}>Шаг 1. Выберите заявку для приёмки</div>
+      <button className="scan-noorder" onClick={onScanNew}>
+        <div className="scan-noorder-ic"><IconScan size={22} /></div>
+        <div className="scan-noorder-tx">
+          <strong>Сканировать без заявки</strong>
+          <span>Сфотографируйте накладную — система сама определит поставщика, номер, дату и позиции и создаст заявку.</span>
+        </div>
+        <IconArrow size={16} />
+      </button>
+
+      <div className="filter-title" style={{ margin: "18px 0 14px" }}>…или выберите существующую заявку</div>
       <div className="order-pick-grid">
         {list.map((o) => (
           <button key={o.id} className="order-pick" onClick={() => onPick(o)}>
@@ -290,7 +325,7 @@ function SelectOrder({ orders, onPick }) {
             <span className="order-pick-go">Принять <IconArrow size={13} /></span>
           </button>
         ))}
-        {list.length === 0 && <div className="text-muted text-sm">Нет заявок, готовых к приёмке.</div>}
+        {list.length === 0 && <div className="text-muted text-sm">Готовых заявок нет — используйте «Сканировать без заявки».</div>}
       </div>
     </div>
   );

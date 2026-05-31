@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>DaraQyzmet — Презентация</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 01 · COVER                                -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-1">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="s1">
+      <div class="s1-top">
+        <div class="s1-top-left">
+          <div class="s1-mark">DQ</div>
+          <div>
+            <div class="s1-brand-name">Dara<b>Qyzmet</b></div>
+            <span class="s1-brand-sub">AI-сотрудник для управления поставками</span>
+          </div>
+        </div>
+        <div class="s1-event-badge">
+          <span>AI Agents Cup</span>
+          <span>·</span>
+          <span>2026</span>
+        </div>
+      </div>
+
+      <div class="s1-body">
+        <div class="s1-left">
+          <div class="s1-kicker">Хакатон · AI Agents Cup 2026</div>
+
+          <div>
+            <div class="s1-name grad">Dara<br/>Qyzmet</div>
+            <div class="s1-name-sub">AI-приёмка накладных для ритейла</div>
+          </div>
+
+          <div class="s1-hero-tag">🚀 От фото накладной до проверенных данных — <b>за 3 минуты</b></div>
+
+          <div class="s1-headline">
+            AI берёт на себя рутину приёмки.<br />
+            <span class="grad">Человек принимает решение.</span>
+          </div>
+
+          <div class="s1-desc">
+            Qwen2.5-VL распознаёт накладную, система проверяет арифметику и считает расхождения,
+            а деньги и запись в систему — только после подтверждения человеком.
+          </div>
+
+          <div class="s1-cases">
+            <div class="s1-cases-label">Кейсы, которые мы взяли</div>
+            <div class="s1-cases-row">
+              <div class="s1-case">
+                <div class="s1-case-tag">AI in Data Analysis · OCR</div>
+                <div class="s1-case-name">Smart Invoice Scan</div>
+                <div class="s1-case-desc">OCR-платформа для цифровизации накладных</div>
+              </div>
+              <div class="s1-case">
+                <div class="s1-case-tag">AI as UI · Bots for Business</div>
+                <div class="s1-case-name">Smart Acceptance</div>
+                <div class="s1-case-desc">Цифровая приёмка накладных</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="s1-pills">
+            <span class="s1-pill">AI Powered · Qwen2.5-VL</span>
+            <span class="s1-pill">Telegram Native</span>
+            <span class="s1-pill">Human-in-the-loop</span>
+            <span class="s1-pill">Made in Kazakhstan</span>
+          </div>
+
+          <div class="s1-stats">
+            <div>
+              <div class="s1-stat-num">≈80%</div>
+              <div class="s1-stat-desc">меньше времени на обработку</div>
+            </div>
+            <div>
+              <div class="s1-stat-num">≈3 мин</div>
+              <div class="s1-stat-desc">на одну накладную</div>
+            </div>
+            <div>
+              <div class="s1-stat-num">99%+</div>
+              <div class="s1-stat-desc">сходимость данных</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="s1-right">
+          <div class="s1-phone-card">
+            <div class="s1-phone-bar">
+              <div class="s1-phone-title">DaraQyzmet Bot</div>
+              <div class="s1-phone-live">онлайн</div>
+            </div>
+            <div class="s1-phone-msg ok">
+              <b>✅ Накладная принята</b><br/>
+              Файл: nakladnaya_12524.pdf
+            </div>
+            <div class="s1-phone-msg">
+              <b>📦 Распознано</b><br/>
+              Товаров: 24 · Сумма: 1 245 600 ₸
+            </div>
+            <div class="s1-phone-msg warn">
+              <b>⚠️ Расхождения</b><br/>
+              Недостача по 2 позициям · к оплате пересчитано
+            </div>
+            <div class="s1-phone-msg ok">
+              <b>📄 Акт сформирован</b><br/>
+              Данные в системе · отчёт готов
+            </div>
+            <div class="s1-phone-footer">DaraQyzmet · AI-приёмка накладных</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 02 · PROBLEM                              -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-2">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">02 · Проблема</div>
+      <h2 class="t-h2">Приёмка накладных вручную — <span class="grad">дорого, долго и с ошибками</span></h2>
+    </div>
+
+    <div class="s2-body">
+      <div class="s2-left">
+        <p class="s2-lead">
+          Магазин принимает товар от поставщика по бумажной/PDF-накладной. Кладовщик вручную сверяет
+          десятки позиций, переносит их в 1С или Excel, ищет арифметические ошибки.
+          Это рутина, которая съедает время и приводит к финансовым потерям.
+        </p>
+
+        <div class="s2-stats">
+          <div class="s2-stat">
+            <div class="s2-stat-num">20+ мин</div>
+            <div class="s2-stat-desc">на одну накладную: ручной ввод позиций, сумм и реквизитов.</div>
+          </div>
+          <div class="s2-stat">
+            <div class="s2-stat-num s2-stat-warn">⚠ Ошибки</div>
+            <div class="s2-stat-desc">Опечатки в количестве и цене, неверные итоги, потерянные строки — приводят к финансовым расхождениям.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="s2-right">
+        <div class="s2-case">
+          <div class="s2-case-icon">👤</div>
+          <div>
+            <div class="s2-case-title">Кто пользователь</div>
+            <div class="s2-case-desc">Магазин («Береке») — кладовщик/товаровед, который принимает поставки. Поставщик («Молпром») — менеджер, который корректирует счёт по акту расхождений.</div>
+          </div>
+        </div>
+        <div class="s2-case">
+          <div class="s2-case-icon">📦</div>
+          <div>
+            <div class="s2-case-title">Сложно отследить</div>
+            <div class="s2-case-desc">Недостача, пересорт, брак, излишек — учитываются «на бумаге» и теряются. Нет единого учёта расхождений.</div>
+          </div>
+        </div>
+        <div class="s2-case">
+          <div class="s2-case-icon">📉</div>
+          <div>
+            <div class="s2-case-title">Нет аналитики</div>
+            <div class="s2-case-desc">Не видно остатков, расходов по поставщикам и качества поставок в реальном времени.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 03 · SOLUTION                             -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-3">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">03 · Решение DaraQyzmet</div>
+      <h2 class="t-h2">AI берёт рутину приёмки <span class="grad">на себя</span></h2>
+      <p class="sh-sub">Qwen2.5-VL распознаёт накладную, система проверяет арифметику и ведёт расхождения — за каждой функцией реальная модель и БД.</p>
+    </div>
+
+    <div class="s3-body">
+      <div class="s3-cards">
+        <div class="s3-card">
+          <div class="s3-card-label">01 · Зрение</div>
+          <div class="s3-card-icon">📡</div>
+          <div class="s3-card-title">OCR / VLM</div>
+          <div class="s3-card-desc">Qwen2.5-VL извлекает позиции, количество, цены и реквизиты из фото/PDF (до 5 страниц).</div>
+          <div class="s3-card-tag">vLLM · guided_json</div>
+        </div>
+        <div class="s3-card">
+          <div class="s3-card-label">02 · Проверка</div>
+          <div class="s3-card-icon">🧠</div>
+          <div class="s3-card-title">AI-проверка</div>
+          <div class="s3-card-desc">Проверка БИН и сходимости сумм — подозрительные строки подсвечиваются. Исправление до подтверждения.</div>
+          <div class="s3-card-tag">invoice_check.py</div>
+        </div>
+        <div class="s3-card">
+          <div class="s3-card-label">03 · Качество</div>
+          <div class="s3-card-icon">⚖️</div>
+          <div class="s3-card-title">Контроль расхождений</div>
+          <div class="s3-card-desc">Недостача / излишек / пересорт / брак с фото и автопересчётом суммы «к оплате».</div>
+          <div class="s3-card-tag">recalc.py · Decimal</div>
+        </div>
+        <div class="s3-card">
+          <div class="s3-card-label">04 · Аналитика</div>
+          <div class="s3-card-icon">📊</div>
+          <div class="s3-card-title">Аналитика</div>
+          <div class="s3-card-desc">Остатки, расходы, качество поставщиков, топ-товары — в реальном времени.</div>
+          <div class="s3-card-tag">Real-time dashboard</div>
+        </div>
+        <div class="s3-card">
+          <div class="s3-card-label">05 · Агент</div>
+          <div class="s3-card-icon">🤖</div>
+          <div class="s3-card-title">AI-агент</div>
+          <div class="s3-card-desc">LangGraph + function-calling: «сколько молока на складе?», «какие расхождения?», черновик заказа.</div>
+          <div class="s3-card-tag">LangGraph · tools</div>
+        </div>
+        <div class="s3-card">
+          <div class="s3-card-label">06 · Каналы</div>
+          <div class="s3-card-icon">✈️</div>
+          <div class="s3-card-title">Telegram + Web</div>
+          <div class="s3-card-desc">Бот для кладовщика и веб-кабинет для магазина и поставщика — единый бэкенд.</div>
+          <div class="s3-card-tag">REST API · /api/v1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 04 · THREE CHANNELS                       -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-4-channels">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <!-- Three-channels scene fills entire slide -->
+    <iframe
+      src="slide4-devices.html"
+      style="position:absolute;inset:0;width:100%;height:100%;border:none;background:transparent;pointer-events:none;"
+      scrolling="no"
+    ></iframe>
+
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 05 · HOW IT WORKS / SCENARIO              -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-4">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">05 · Пользовательский сценарий</div>
+      <h2 class="t-h2">От фото накладной <span class="grad">до акта расхождений</span></h2>
+    </div>
+
+    <div class="s4-body">
+      <div class="s4-flow">
+        <div class="s4-step">
+          <div class="s4-step-icon">✉️</div>
+          <div class="s4-step-label">Шаг 1</div>
+          <div class="s4-step-sub">Накладная фото/PDF в Telegram или веб</div>
+        </div>
+        <div class="s4-arrow">→</div>
+        <div class="s4-step">
+          <div class="s4-step-icon">📡</div>
+          <div class="s4-step-label">Шаг 2</div>
+          <div class="s4-step-sub">VLM распознаёт позиции, суммы и БИН</div>
+        </div>
+        <div class="s4-arrow">→</div>
+        <div class="s4-step">
+          <div class="s4-step-icon">🧠</div>
+          <div class="s4-step-label">Шаг 3</div>
+          <div class="s4-step-sub">Проверка арифметики, правка строк</div>
+        </div>
+        <div class="s4-arrow">→</div>
+        <div class="s4-step">
+          <div class="s4-step-icon">⚖️</div>
+          <div class="s4-step-label">Шаг 4</div>
+          <div class="s4-step-sub">Расхождения → пересчёт «к оплате»</div>
+        </div>
+        <div class="s4-arrow">→</div>
+        <div class="s4-step">
+          <div class="s4-step-icon">📄</div>
+          <div class="s4-step-label">Шаг 5</div>
+          <div class="s4-step-sub">Акт расхождений → поставщик корректирует счёт</div>
+        </div>
+      </div>
+
+      <div class="s4-grid">
+        <div class="s4-card accent">
+          <div class="s4-accent-badge">⚡ Приёмка без заявки</div>
+          <div class="s4-card-title"><span>📸</span> Чисто по OCR — без предварительной заявки</div>
+          <div class="s4-card-body">
+            Не нужно заранее создавать заявку и подвязывать поставщика: магазин просто фотографирует накладную.
+            <b>OCR извлекает поставщика, позиции и суммы → приёмка создаётся автоматически.</b>
+            Подходит для разовых и мелких поставок, когда заявки в системе ещё нет.
+          </div>
+          <div class="s4-accent-tag">OCR-only · auto-create</div>
+        </div>
+        <div class="s4-card accent blue">
+          <div class="s4-accent-badge">👁 Подсчёт по фото</div>
+          <div class="s4-card-title"><span>🔍</span> VLM считает количество и брак + Qdrant/CLIP узнаёт товар</div>
+          <div class="s4-card-body">
+            Для брака и недостачи камера фотографирует товар: <b>VLM считает количество прямо с фото</b>,
+            а сам товар определяется визуально через <b>Qdrant + CLIP</b> — без штрихкода и ручного ввода.
+            Результат подставляется в позицию расхождения.
+          </div>
+          <div class="s4-accent-tag">VLM count · Qdrant + CLIP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 06 · PROTOTYPE / WHAT WORKS               -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-5">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">06 · Прототип</div>
+      <h2 class="t-h2">Что реально <span class="grad">работает в коде</span></h2>
+    </div>
+
+    <div class="s5-body">
+      <div class="s5-left">
+        <div class="s5-checks">
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Распознавание накладных</b> — реальный вызов Qwen2.5-VL через vLLM (<span class="s5-code">guided_json</span>), без mock-режима.</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Проверка накладной</b> — отчёт об арифметических несоответствиях с кнопками исправления (read-only).</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Расхождения + автопересчёт</b> — 4 типа, дельта по цене позиции, единый <span class="s5-code">recompute()</span>.</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Акт расхождений</b> — снимок original / corrected / delta, статус заявки меняется.</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>AI-агент</b> — function-calling по складу, расхождениям, расходам, поиску товара по фото (Qdrant + CLIP).</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Telegram-бот</b> — приёмка прямо в чате, фото-распознавание количества для брака/излишка.</span>
+          </div>
+          <div class="s5-chk">
+            <div class="s5-chk-mark">✓</div>
+            <span><b>Auth</b> — bcrypt + JWT (HS256), RBAC, изоляция организаций.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="s5-right">
+        <div class="s5-phone">
+          <div class="s5-phone-top">
+            <div class="s5-phone-av">DQ</div>
+            <div>
+              <div class="s5-phone-bot">DaraQyzmet Bot</div>
+              <div class="s5-phone-status">онлайн · принимает накладные</div>
+            </div>
+          </div>
+          <div class="s5-msg">
+            <b>✅ Накладная принята</b><br/>
+            Файл: nakladnaya_12524.pdf
+          </div>
+          <div class="s5-msg">
+            <b>📦 Распознано</b><br/>
+            Товаров: 24 · Сумма: 1 245 600 ₸
+          </div>
+          <div class="s5-msg warn">
+            <b>⚠️ Расхождения</b><br/>
+            Недостача по 2 позициям · к оплате пересчитано
+          </div>
+          <div class="s5-msg">
+            <b>📄 Отчёт по поставке готов</b><br/>
+            Данные в системе · акт сформирован
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 07 · ARCHITECTURE                         -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-6">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">07 · Архитектура системы</div>
+      <h2 class="t-h2">Реальный стек, <span class="grad">не презентационный</span></h2>
+    </div>
+
+    <div class="s6-body">
+      <div class="s6-arch">
+        <div class="s6-arch-col">
+          <div class="s6-node">
+            <div class="s6-node-title">✈️ Telegram Bot</div>
+            <div class="s6-node-sub">python-telegram-bot</div>
+          </div>
+          <div class="s6-node">
+            <div class="s6-node-title">🌐 Web (React)</div>
+            <div class="s6-node-sub">Vite · 2 роли</div>
+          </div>
+        </div>
+        <div class="s6-arch-arrow">→</div>
+        <div class="s6-arch-col">
+          <div class="s6-node core">
+            <div class="s6-node-title">⚙️ FastAPI</div>
+            <div class="s6-node-sub">/api/v1 · JWT · RBAC</div>
+          </div>
+          <div class="s6-node">
+            <div class="s6-node-title">🗄️ PostgreSQL 16</div>
+            <div class="s6-node-sub">SQLAlchemy 2</div>
+          </div>
+        </div>
+        <div class="s6-arch-arrow">→</div>
+        <div class="s6-arch-col">
+          <div class="s6-node core">
+            <div class="s6-node-title">🧠 Qwen2.5-VL</div>
+            <div class="s6-node-sub">vLLM · vision + tools</div>
+          </div>
+          <div class="s6-node">
+            <div class="s6-node-title">🔍 Qdrant + CLIP</div>
+            <div class="s6-node-sub">поиск товара по фото</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="s6-tech-grid">
+        <div class="s6-tech-card">
+          <div class="s6-tech-title">⚙️ Backend</div>
+          <div class="s6-tech-body">FastAPI · SQLAlchemy 2 · Pydantic · uv. Роутеры: auth, orders, invoices, acceptance, supplier, products, agent.</div>
+          <div class="s6-tech-tag">Python · FastAPI</div>
+        </div>
+        <div class="s6-tech-card">
+          <div class="s6-tech-title">🧠 AI / ML</div>
+          <div class="s6-tech-body">vLLM (Qwen2.5-VL) для зрения и tool-calling · LangGraph-агент · fastembed CLIP (ONNX/CPU).</div>
+          <div class="s6-tech-tag">vLLM · LangGraph</div>
+        </div>
+        <div class="s6-tech-card">
+          <div class="s6-tech-title">🗄️ Данные</div>
+          <div class="s6-tech-body">PostgreSQL 16 · Qdrant. Деньги Numeric(14,2), количества (14,3), PK — UUID.</div>
+          <div class="s6-tech-tag">PostgreSQL · Qdrant</div>
+        </div>
+        <div class="s6-tech-card">
+          <div class="s6-tech-title">🐳 Инфра</div>
+          <div class="s6-tech-body">docker compose: db · qdrant · api · web. vLLM поднимается отдельно на GPU-хосте.</div>
+          <div class="s6-tech-tag">Docker · GPU</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 08 · BUSINESS EFFECT                      -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-7">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">08 · Бизнес-эффект</div>
+      <h2 class="t-h2">Измеримый результат <span class="grad">для бизнеса</span></h2>
+    </div>
+
+    <div class="s7-body">
+      <p class="s7-lead">
+        Целевые показатели на основе времени ручной приёмки (20+ мин) и доли арифметических расхождений.
+        Цифры — проекция эффекта внедрения.
+      </p>
+
+      <div class="s7-stats">
+        <div class="s7-stat-card">
+          <div class="s7-stat-icon">⏱️</div>
+          <div class="s7-stat-num">≈80%</div>
+          <div class="s7-stat-desc">времени на обработку накладной</div>
+        </div>
+        <div class="s7-stat-card">
+          <div class="s7-stat-icon">🛡️</div>
+          <div class="s7-stat-num">≈99%</div>
+          <div class="s7-stat-desc">арифметических ошибок и расхождений</div>
+        </div>
+        <div class="s7-stat-card">
+          <div class="s7-stat-icon">💰</div>
+          <div class="s7-stat-num">+15%</div>
+          <div class="s7-stat-desc">экономия на операционных затратах</div>
+        </div>
+        <div class="s7-stat-card">
+          <div class="s7-stat-icon">📊</div>
+          <div class="s7-stat-num">100%</div>
+          <div class="s7-stat-desc">прозрачность поставок и остатков</div>
+        </div>
+      </div>
+
+      <div class="s7-bottom">
+        <div class="s7-card">
+          <div class="s7-card-title">📍 Рынок</div>
+          <div class="s7-card-body">Малый и средний ритейл Казахстана — десятки тысяч точек, где приёмка по-прежнему ручная.</div>
+        </div>
+        <div class="s7-card">
+          <div class="s7-card-title">💼 Модель</div>
+          <div class="s7-card-body">SaaS-подписка на магазин + интеграции (1С/ERP) на следующем этапе.</div>
+        </div>
+        <div class="s7-card">
+          <div class="s7-card-title">🚧 Барьер входа</div>
+          <div class="s7-card-body">Telegram-нативность: внедрение без обучения и установки тяжёлого ПО. Работает с первого сообщения.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 09 · ROADMAP / WHAT'S NEXT                -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-roadmap">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">09 · Что дальше</div>
+      <h2 class="t-h2">Roadmap: <span class="grad">что не успели и куда растём</span></h2>
+    </div>
+
+    <div class="s-road-body">
+      <p class="s-road-lead">
+        За 24 часа собрали работающее ядро. Дальше — превращение прототипа в полноценный продукт:
+        больше автономии у AI, шире каналы, собственные обученные модели.
+      </p>
+
+      <div class="s-road-grid">
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🏢</div><div class="s-road-title">Полноценный SaaS</div></div>
+          <div class="s-road-desc">Мультитенантность, самостоятельная регистрация контрагентов, биллинг и онбординг магазинов и поставщиков.</div>
+          <div class="s-road-tag">multi-tenant · billing</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🤖</div><div class="s-road-title">Мультиагент пополнения</div></div>
+          <div class="s-road-desc">Агент сам формирует заказ по стоку и оборачиваемости, ставит товары в резерв, следит за истекающими сроками годности и неликвидами.</div>
+          <div class="s-road-tag">auto-order · reserve</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">📱</div><div class="s-road-title">Шире клиенты</div></div>
+          <div class="s-road-desc">Полноценное мобильное приложение, расширенная веб-аппка и админ-панель оператора.</div>
+          <div class="s-road-tag">mobile · web · admin</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🧩</div><div class="s-road-title">Персистентная память</div></div>
+          <div class="s-road-desc">Долговременная память агента: паттерны поставщиков и магазина, обучение на истории приёмок и заказов.</div>
+          <div class="s-road-tag">persistent memory</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🛒</div><div class="s-road-title">Halyk Market + 1С/ERP</div></div>
+          <div class="s-road-desc">Подключение к Halyk Market — заказ и оплата из экосистемы; выгрузка актов и проводок в 1С/ERP.</div>
+          <div class="s-road-tag">Halyk · 1С/ERP</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🎯</div><div class="s-road-title">Умнее модель</div></div>
+          <div class="s-road-desc">Переход на более крупную/точную VLM. Проблема сейчас — точность на плохих сканах и редких форматах накладных.</div>
+          <div class="s-road-tag">bigger VLM</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">⚡</div><div class="s-road-title">Оптимизация сервинга</div></div>
+          <div class="s-road-desc">Latency и throughput, KV-cache, decoding strategies, дистилляция и fine-tune модели под накладные KZ.</div>
+          <div class="s-road-tag">KV-cache · distill · FT</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">🗂️</div><div class="s-road-title">Классификатор интентов</div></div>
+          <div class="s-road-desc">Обученный intent-recognition вместо эвристик — точная маршрутизация запросов к агенту.</div>
+          <div class="s-road-tag">intent classifier</div>
+        </div>
+        <div class="s-road-card">
+          <div class="s-road-head"><div class="s-road-ico">📷</div><div class="s-road-title">YOLO-детектор товара</div></div>
+          <div class="s-road-desc">Lightweight детектор: фиксированная камера, кладут товар → авто-распознавание позиции и подсчёт количества, брака и недостачи.</div>
+          <div class="s-road-tag">YOLO · auto-count</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 10 · RISKS & HONESTY                      -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-9">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="sh">
+      <div class="sh-num">10 · Честность и риски</div>
+      <h2 class="t-h2">Где AI ошибается — <span class="grad">и почему это не страшно</span></h2>
+    </div>
+
+    <div class="s9-body">
+      <div class="s9-grid">
+        <div class="s9-panel warn">
+          <div class="s9-panel-title">
+            <div class="s9-panel-icon">⚠️</div>
+            Риски
+          </div>
+          <div class="s9-checks">
+            <div class="s9-chk">
+              <div class="s9-chk-mk x">!</div>
+              <span><b>LLM/VLM может ошибиться:</b> галлюцинации, неверное чтение цифр на плохом скане. Поэтому ответ модели — черновик, а не финальное решение.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk x">!</div>
+              <span><b>Нужен Human-in-the-loop:</b> деньги и запись в систему — только после подтверждения человеком. AI не пишет в БД самостоятельно.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk x">!</div>
+              <span><b>Человеческий фактор:</b> оператор может пропустить ошибку — система подсвечивает подозрительное, но финальная ответственность на человеке.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk x">!</div>
+              <span><b>Demo-grade:</b> нужен NVIDIA GPU, CORS открыт (<span class="code">*</span>), схема через <span class="code">create_all</span>, нет тестов и миграций — это MVP, не продакшен.</span>
+            </div>
+          </div>
+        </div>
+        <div class="s9-panel">
+          <div class="s9-panel-title">
+            <div class="s9-panel-icon">🎯</div>
+            Как снижаем риск
+          </div>
+          <div class="s9-checks">
+            <div class="s9-chk">
+              <div class="s9-chk-mk">✓</div>
+              <span><b>LLM не считает деньги:</b> за суммы отвечает детерминированный <span class="code">recalc.py</span> (Decimal), а не модель.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk">✓</div>
+              <span><b>Подтверждение человеком:</b> каждое расхождение и правка проходят через явный шаг подтверждения оператором.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk">✓</div>
+              <span><b>Подсветка подозрительного:</b> проверка арифметики и сходимости сумм до подтверждения — ошибку видно сразу.</span>
+            </div>
+            <div class="s9-chk">
+              <div class="s9-chk-mk">✓</div>
+              <span><b>AI там, где ошибка некритична:</b> распознавание, подсказки, поиск. Критичные действия — за детерминированным кодом и человеком.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="s9-callout">
+        Главный риск AI в финансах — «галлюцинации». Мы минимизировали его архитектурно: LLM
+        <b>не пишет в БД</b> и не считает деньги — за сумму отвечает детерминированный
+        <span class="code">recalc.py</span>, за запись заказа — узел после подтверждения человеком.
+        <b>Human-in-the-loop</b> — не ограничение, а осознанный дизайн: AI ускоряет рутину, решение остаётся за человеком.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────── -->
+<!-- 11 · THANK YOU                            -->
+<!-- ────────────────────────────────────────── -->
+<div class="slide-wrapper" id="slide-end">
+  <div class="slide">
+    <div class="noise"></div>
+
+    <div class="s-end">
+      <div class="s-end-mark">DQ</div>
+      <div class="s-end-brand">Dara<b>Qyzmet</b></div>
+      <h2 class="s-end-title">Спасибо за <span class="grad">внимание</span></h2>
+      <p class="s-end-sub">AI-сотрудник для приёмки накладных и управления поставками</p>
+      <div class="s-end-pills">
+        <span class="s1-pill">AI Powered · Qwen2.5-VL</span>
+        <span class="s1-pill">Telegram Native</span>
+        <span class="s1-pill">Made in Kazakhstan</span>
+      </div>
+      <div class="s-end-foot">AI Agents Cup · 2026</div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

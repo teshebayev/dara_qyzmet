@@ -75,7 +75,13 @@ def count_products(png: bytes) -> dict:
     with httpx.Client(timeout=settings.request_timeout) as client:
         resp = client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
-    return _parse_json(resp.json()["choices"][0]["message"]["content"])
+    parsed = _parse_json(resp.json()["choices"][0]["message"]["content"])
+    # Модель иногда отдаёт JSON-массив вместо объекта — берём первый элемент.
+    if isinstance(parsed, list):
+        parsed = parsed[0] if parsed and isinstance(parsed[0], dict) else {}
+    if not isinstance(parsed, dict):
+        parsed = {}
+    return parsed
 
 
 def recognize(pages: list[bytes]) -> tuple[Invoice, str]:

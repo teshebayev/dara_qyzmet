@@ -119,9 +119,10 @@ async def recognize_by_image(
     try:  # подсчёт через VLM — best-effort (нужен vLLM)
         png = normalize(data, file.content_type or "", file.filename or "")[0]
         c = vlm.count_products(png)
-        recognized_name = c.get("name")
-        count = c.get("count")
-    except (httpx.HTTPError, ValueError, KeyError):
+        if isinstance(c, dict):
+            recognized_name = c.get("name")
+            count = c.get("count")
+    except Exception:  # noqa: BLE001 — подсчёт не критичен, фото всё равно принимаем
         pass
 
     return RecognizeOut(

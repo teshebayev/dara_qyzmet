@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dara Kyzmet — AI Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --g:#19e58a; --g2:#0bd07a; --g-dim:#0e8a59;
+    --bg:#04100b; --card:#0a1611; --card2:#0c1a14;
+    --line:rgba(25,229,138,.18); --line2:rgba(25,229,138,.30);
+    --txt:#dff5ea; --mut:#7fa394; --mut2:#5f8475;
+    --glow:0 0 24px rgba(25,229,138,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:Inter,system-ui,sans-serif;color:var(--txt);
+    background:
+      radial-gradient(900px 500px at 78% 8%, rgba(25,229,138,.10), transparent 60%),
+      radial-gradient(700px 500px at 8% 60%, rgba(11,208,122,.08), transparent 60%),
+      #03100a;
+    padding:34px 28px 28px;min-height:100vh;
+  }
+  .num{font-family:"JetBrains Mono",monospace}
+  .head{max-width:1340px;margin:0 auto 22px}
+  .head h1{font-size:30px;font-weight:800;letter-spacing:.2px}
+  .head h1 span{color:var(--g)}
+  .deck{max-width:1340px;margin:0 auto;display:grid;grid-template-columns:1fr 1.18fr 1fr;gap:18px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:16px}
+  .card{
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:18px;padding:18px 18px 16px;position:relative;overflow:hidden;
+  }
+  .card::after{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+  .eyebrow{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--g);font-weight:700}
+  .sub{font-size:12.5px;color:var(--mut);margin-top:4px;line-height:1.45}
+  .stat{font-size:34px;font-weight:800;color:var(--g);line-height:1;margin-top:10px}
+  .stat small{display:block;font-size:11.5px;color:var(--mut);font-weight:500;margin-top:6px;letter-spacing:.2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mini{background:rgba(8,20,15,.7);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.5px}
+  .logo{width:30px;height:30px;display:grid;place-items:center;border:1.5px solid var(--g);border-radius:8px;transform:rotate(45deg)}
+  .logo b{transform:rotate(-45deg);color:var(--g);font-size:14px}
+  .brand .t1{font-size:15px}.brand .t1 small{display:block;font-size:9px;letter-spacing:3px;color:var(--mut)}
+  .flow{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-top:14px}
+  .flow .step{flex:1;text-align:center}
+  .flow .dot{width:42px;height:42px;margin:0 auto 8px;border-radius:12px;display:grid;place-items:center;
+    background:rgba(25,229,138,.08);border:1px solid var(--line2);color:var(--g);font-size:18px}
+  .flow .lbl{font-size:10.5px;color:var(--mut);line-height:1.3}
+  .arrow{color:var(--g-dim);align-self:center;font-size:16px;padding-top:8px}
+  /* hero */
+  .hero{padding:22px}
+  .hero .topbar{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:10px;letter-spacing:2px}
+  .hero h2{font-size:30px;font-weight:900;line-height:1.05;margin-top:18px}
+  .hero h2 .ai{color:var(--g)}
+  .hero p{color:var(--mut);font-size:13px;margin-top:8px}
+  .hstats{display:flex;gap:26px;margin-top:16px}
+  .hstats div b{display:block;font-size:22px;color:var(--g);font-weight:800}
+  .hstats div span{font-size:10.5px;color:var(--mut)}
+  .laptop{margin-top:18px;border:1px solid var(--line2);border-radius:14px 14px 6px 6px;background:
+    radial-gradient(500px 200px at 50% 0,rgba(25,229,138,.16),transparent 70%),#06140e;
+    height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:var(--glow)}
+  .laptop .lg{font-weight:800;letter-spacing:2px;color:var(--g)}
+  .laptop .ls{font-size:11px;color:var(--mut)}
+  .laptop-base{height:8px;background:linear-gradient(90deg,transparent,rgba(25,229,138,.25),transparent);border-radius:0 0 10px 10px}
+  /* chat */
+  .chat{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .bubble{background:rgba(25,229,138,.07);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;max-width:88%}
+  .bubble .ttl{font-weight:700}
+  .bubble.warn{background:rgba(245,170,60,.08);border-color:rgba(245,170,60,.3)}
+  .bubble .time{float:right;color:var(--mut2);font-size:9px;margin-left:8px}
+  .botbar{display:flex;align-items:center;gap:8px;margin-top:10px;background:#081511;border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--mut);font-size:12px}
+  /* arch */
+  .arch{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:11px}
+  .node{background:rgba(25,229,138,.07);border:1px solid var(--line2);border-radius:10px;padding:10px;text-align:center;flex:1}
+  .node.core{background:rgba(25,229,138,.12);border-color:var(--g);color:var(--g);font-weight:700}
+  .arch .stack{display:flex;flex-direction:column;gap:8px;flex:1}
+  /* metrics right */
+  .biz{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .biz .mini .ico{color:var(--g);font-size:18px}
+  .biz .mini b{display:block;font-size:24px;color:var(--g);font-weight:800;margin-top:8px}
+  .biz .mini span{font-size:10.5px;color:var(--mut)}
+  .charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .charts .mini b{display:block;font-size:18px;font-weight:800;color:var(--txt)}
+  .charts .mini .cap{font-size:9.5px;color:var(--mut)}
+  .charts .delta{font-size:10px;color:var(--g);font-weight:700}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:36px;margin-top:8px}
+  .bars i{flex:1;background:linear-gradient(180deg,var(--g),var(--g-dim));border-radius:2px;opacity:.85}
+  /* roadmap */
+  .road{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;position:relative}
+  .road .ph{text-align:center}
+  .road .q{color:var(--g);font-weight:800;font-size:12px}
+  .road .d{font-size:10px;color:var(--mut);margin-top:4px;line-height:1.3}
+  .road .pt{width:9px;height:9px;border-radius:50%;background:var(--g);margin:10px auto 0;box-shadow:var(--glow)}
+  /* footer */
+  .foot{max-width:1340px;margin:18px auto 0;background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:18px;padding:16px 22px;display:flex;justify-content:space-between;gap:18px;align-items:center}
+  .foot .f{display:flex;gap:10px;align-items:flex-start;flex:1}
+  .foot .f .fi{color:var(--g);font-size:18px}
+  .foot .f b{font-size:13px}.foot .f span{font-size:11px;color:var(--mut);display:block;margin-top:2px}
+  @media (max-width:1080px){.deck{grid-template-columns:1fr}.head h1{font-size:22px}.foot{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+  <div class="head"><h1>Для <span>Dara Kyzmet</span> — AI-визуал пичдека</h1></div>
+
+  <div class="deck">
+
+    <!-- ЛЕВАЯ КОЛОНКА -->
+    <div class="col">
+      <div class="card">
+        <div class="brand"><span class="logo"><b>◆</b></span>
+          <span class="t1">DARA<br><small>KYZMET</small></span></div>
+        <div class="eyebrow" style="margin-top:14px">AI-сотрудник для вашего бизнеса</div>
+        <div class="sub">Обработка накладных, контроль поставок, аналитика и контроль качества.</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="eyebrow">Проблема</div>
+          <div class="sub">Ручная обработка накладных занимает много времени и приводит к ошибкам.</div>
+          <div class="stat num">20+<small>мин на одну накладную</small></div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Рынок</div>
+          <div class="sub">Малый и средний ритейл в Казахстане.</div>
+          <div class="stat num">50K+<small>магазинов</small></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Текущий процесс</div>
+        <div class="sub">Много ручной работы и потерь.</div>
+        <div class="flow">
+          <div class="step"><div class="dot">🧾</div><div class="lbl">Получение накладной</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">⌨️</div><div class="lbl">Ручной ввод в 1С / Excel</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">🔍</div><div class="lbl">Проверка и поиск ошибок</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">🤝</div><div class="lbl">Сверка с поставщиком</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Решение Dara Kyzmet</div>
+        <div class="sub">AI + Telegram автоматизируют весь процесс приёмки.</div>
+        <div class="grid2" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div><div class="stat num" style="font-size:26px">−95%<small>ручной работы</small></div></div>
+          <div><div class="stat num" style="font-size:26px">3<small>мин на обработку</small></div></div>
+          <div><div class="stat num" style="font-size:26px">99%<small>точность данных</small></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА -->
+    <div class="col">
+      <div class="card hero">
+        <div class="topbar">
+          <span class="brand"><span class="logo" style="width:24px;height:24px"><b>◆</b></span>DARA KYZMET</span>
+          <span>AI POWERED OPERATIONS</span>
+        </div>
+        <h2><span class="ai">AI</span> STARTUP<br>PITCH DECK</h2>
+        <p>Цифровизация документооборота для ритейла и поставщиков.</p>
+        <div class="hstats">
+          <div><b>95%</b><span>автоматизация</span></div>
+          <div><b>3 мин</b><span>на обработку</span></div>
+          <div><b>99%</b><span>точность</span></div>
+        </div>
+        <div class="laptop">
+          <div class="lg">◆ DARA KYZMET</div>
+          <div class="ls">AI-сотрудник для обработки накладных и контроля поставок</div>
+        </div>
+        <div class="laptop-base"></div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Как это работает</div>
+        <div class="sub">Просто как написать в Telegram.</div>
+        <div class="flow">
+          <div class="step"><div class="dot">✈️</div><div class="lbl">Накладная от поставщика</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">🔡</div><div class="lbl">Распознавание данных (OCR/VLM)</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">🧠</div><div class="lbl">AI проверка и анализ</div></div>
+          <div class="arrow">→</div>
+          <div class="step"><div class="dot">🗄️</div><div class="lbl">Данные в системе и уведомления</div></div>
+        </div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr 1fr">
+        <div class="card">
+          <div class="eyebrow">Демо: Telegram Bot</div>
+          <div class="chat">
+            <div class="bubble"><span class="ttl">✅ Накладная принята</span><br>Файл: nakladnaya_1254.pdf<span class="time">16:42</span></div>
+            <div class="bubble"><span class="ttl">📦 Данные распознаны</span><br>Товаров: 24 · Сумма: 1 245 600 ₸<span class="time">16:43</span></div>
+            <div class="bubble warn"><span class="ttl">⚠️ Обнаружены расхождения</span><br>2 позиции<span class="time">16:43</span></div>
+            <div class="bubble"><span class="ttl">✅ Накладная обработана</span><br>Сохранено в систему<span class="time">16:44</span></div>
+          </div>
+          <div class="botbar">💬 Сообщение…&nbsp; 📷 🎤</div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Архитектура системы</div>
+          <div class="arch">
+            <div class="stack">
+              <div class="node">Telegram&nbsp;Bot</div>
+              <div class="node">Веб / Поставщики</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stack">
+              <div class="node core">AI Engine<br>OCR + LLM</div>
+              <div class="node">База данных</div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="stack">
+              <div class="node">1С / ERP</div>
+              <div class="node">Аналитика<br>и отчёты</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ПРАВАЯ КОЛОНКА -->
+    <div class="col">
+      <div class="card">
+        <div class="eyebrow">Бизнес-эффект</div>
+        <div class="sub">Измеримый результат для бизнеса.</div>
+        <div class="biz" style="margin-top:12px">
+          <div class="mini"><div class="ico">⏱️</div><b>−80%</b><span>времени на обработку</span></div>
+          <div class="mini"><div class="ico">🛡️</div><b>−99%</b><span>ошибок и расхождений</span></div>
+          <div class="mini"><div class="ico">🗃️</div><b>+15%</b><span>экономия на затратах</span></div>
+          <div class="mini"><div class="ico">📈</div><b>100%</b><span>прозрачность остатков</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Аналитика и контроль</div>
+        <div class="sub">Все данные в реальном времени.</div>
+        <div class="charts" style="margin-top:12px">
+          <div class="mini">
+            <span class="cap">Обработано накладных</span><b class="num">12 458</b><span class="delta">+32%</span>
+            <div class="bars"><i style="height:40%"></i><i style="height:55%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:60%"></i><i style="height:90%"></i><i style="height:100%"></i></div>
+          </div>
+          <div class="mini">
+            <span class="cap">Точность распознавания</span><b class="num">99.2%</b><span class="delta">+1.2%</span>
+            <svg viewBox="0 0 100 38" width="100%" height="36" preserveAspectRatio="none" style="margin-top:8px">
+              <polyline points="0,30 18,26 36,28 54,18 72,16 100,8" fill="none" stroke="#19e58a" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="mini">
+            <span class="cap">Выявлено расхождений</span><b class="num">248</b><span class="delta">−18%</span>
+            <svg viewBox="0 0 100 38" width="100%" height="36" preserveAspectRatio="none" style="margin-top:8px">
+              <polyline points="0,10 20,16 40,14 60,22 80,26 100,30" fill="none" stroke="#19e58a" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Roadmap</div>
+        <div class="sub">Планы развития.</div>
+        <div class="road">
+          <div class="ph"><div class="q">Q2 2024</div><div class="d">OCR + Telegram, базовый функционал</div><div class="pt"></div></div>
+          <div class="ph"><div class="q">Q3 2024</div><div class="d">AI проверка и аналитика</div><div class="pt"></div></div>
+          <div class="ph"><div class="q">Q4 2024</div><div class="d">Интеграция с 1С / ERP</div><div class="pt"></div></div>
+          <div class="ph"><div class="q">2025+</div><div class="d">AI прогнозирование и автозаказ</div><div class="pt"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <div class="f"><span class="fi">🛡️</span><div><b>Безопасность данных</b><span>Шифрование и соответствие стандартам</span></div></div>
+    <div class="f"><span class="fi">🏛️</span><div><b>Доверие Halyk</b><span>Создано с фокусом на надёжность</span></div></div>
+    <div class="f"><span class="fi">✦</span><div><b>AI Будущее</b><span>Инновации сегодня — лидерство завтра</span></div></div>
+    <div class="f" style="justify-content:flex-end;flex:0 0 auto"><span class="brand"><span class="logo"><b>◆</b></span>DARA KYZMET</span></div>
+  </div>
+</body>
+</html>

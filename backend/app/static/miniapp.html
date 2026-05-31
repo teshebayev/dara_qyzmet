@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Камера приёмки</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, Inter, system-ui, sans-serif;
+           background: var(--tg-theme-bg-color, #0f172a); color: var(--tg-theme-text-color, #e2e8f0); }
+    .wrap { padding: 12px; max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 16px; margin: 4px 0 10px; }
+    .muted { color: #94a3b8; font-size: 13px; }
+    video, canvas, img.shot { width: 100%; border-radius: 12px; background: #000; aspect-ratio: 3/4; object-fit: cover; }
+    canvas { display: none; }
+    .row { display: flex; gap: 8px; margin-top: 12px; }
+    button { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .primary { background: #00A84F; color: #fff; }
+    .ghost { background: #1e293b; color: #e2e8f0; }
+    .result { margin-top: 14px; padding: 12px; border-radius: 10px; background: #1e293b; }
+    .qty { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .qty input { width: 90px; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 18px; text-align: center; }
+    .err { color: #f87171; margin-top: 10px; font-size: 14px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="title">Наведите камеру на товар</h1>
+    <div class="muted" id="hint">Снимите бракованные/излишковые единицы — определим товар и количество.</div>
+
+    <video id="video" autoplay playsinline muted></video>
+    <img class="shot hidden" id="shot" alt="снимок" />
+    <canvas id="canvas"></canvas>
+
+    <div class="row" id="captureRow">
+      <button class="primary" id="snap">📷 Снять</button>
+    </div>
+
+    <div class="result hidden" id="result"></div>
+    <div class="err hidden" id="err"></div>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    tg?.ready(); tg?.expand();
+
+    const params = new URLSearchParams(location.search);
+    const API = params.get('api');            // напр. https://xxx.ngrok.io/api/v1
+    const TOKEN = params.get('token');
+    const TYPE = params.get('type') || '';    // defect | surplus
+    const NAME = params.get('name') || '';
+
+    const $ = (id) => document.getElementById(id);
+    if (NAME) $('title').textContent = (TYPE === 'defect' ? 'Брак: ' : 'Излишек: ') + NAME;
+
+    let stream = null;
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }, audio: false });
+        $('video').srcObject = stream;
+      } catch (e) {
+        showErr('Нет доступа к камере: ' + e.message);
+      }
+    }
+    function stopCamera() { stream?.getTracks().forEach(t => t.stop()); }
+    function showErr(m) { const el = $('err'); el.textContent = m; el.classList.remove('hidden'); }
+
+    $('snap').onclick = async () => {
+      const v = $('video');
+      const c = $('canvas');
+      c.width = v.videoWidth || 720; c.height = v.videoHeight || 960;
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+      // показать снимок
+      $('shot').src = URL.createObjectURL(blob);
+      $('shot').classList.remove('hidden');
+      $('video').classList.add('hidden');
+      $('captureRow').classList.add('hidden');
+      $('result').classList.remove('hidden');
+      $('result').textContent = '🔎 Распознаю…';
+      stopCamera();
+
+      try {
+        const fd = new FormData();
+        fd.append('file', blob, 'capture.jpg');
+        const res = await fetch(API + '/products/recognize-image', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + TOKEN, 'ngrok-skip-browser-warning': 'true' },
+          body: fd });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        renderResult(data);
+      } catch (e) {
+        $('result').innerHTML = '';
+        showErr('Ошибка распознавания: ' + e.message);
+        retryButton();
+      }
+    };
+
+    function renderResult(data) {
+      const name = data.recognized_name || (data.matches?.[0]?.name) || NAME || '—';
+      const count = data.count ?? 1;
+      $('result').innerHTML = `
+        <div>Распознано: <b>${name}</b></div>
+        <div class="qty">
+          <span>Количество:</span>
+          <input id="cnt" type="number" min="0" step="1" value="${count}" />
+        </div>
+        <div class="row">
+          <button class="ghost" id="retry">↻ Переснять</button>
+          <button class="primary" id="confirm">✅ Подтвердить</button>
+        </div>`;
+      $('retry').onclick = () => location.reload();
+      $('confirm').onclick = () => {
+        const qty = Number($('cnt').value || 0);
+        tg?.sendData(JSON.stringify({ count: qty, name }));
+        tg?.close();
+      };
+    }
+    function retryButton() {
+      const r = document.createElement('button');
+      r.className = 'ghost'; r.textContent = '↻ Переснять'; r.style.marginTop = '10px';
+      r.onclick = () => location.reload();
+      $('err').after(r);
+    }
+
+    startCamera();
+  </script>
+</body>
+</html>

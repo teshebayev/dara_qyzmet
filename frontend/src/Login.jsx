@@ -33,8 +33,8 @@ export default function Login({ onLogin }) {
     <div className="login-screen">
       <div className="login-card">
         <div className="login-brand">
-          <div className="brand-icon">D</div>
-          <h1>Dara Qyzmet</h1>
+          <img className="brand-logo brand-logo-lg" src="/logo.svg" alt="DaraQyzmet" />
+          <h1>DaraQyzmet</h1>
           <p>Цифровая приёмка накладных</p>
         </div>
 
@@ -76,8 +76,8 @@ export default function Login({ onLogin }) {
         </div>
 
         <div className="login-demo">
-          Демо магазин: <code>store@dara.kz</code><br />
-          Демо поставщик: <code>dist@dara.kz</code><br />
+          Магазин: <code>store@dara.kz</code><br />
+          Поставщик: <code>dist@dara.kz</code><br />
           Пароль: <code>demo12345</code>
         </div>
       </div>
