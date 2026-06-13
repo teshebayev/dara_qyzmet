@@ -66,13 +66,42 @@ export async function exportNodeToPdf(node, filename = "akt.pdf") {
   return { fallback: false };
 }
 
-function printFallback(node) {
-  const w = window.open("", "_blank");
-  if (!w) return;
+// Печать документа: открываем новое окно с переносом стилей текущей страницы,
+// раскладываем бланк под A4 (альбомная) и вызываем системный диалог печати
+// (там же доступно «Сохранить как PDF»). Используется и как фолбэк PDF-экспорта.
+export function printNode(node, title = "Документ") {
+  if (!node) return false;
+  const w = window.open("", "_blank", "width=1200,height=820");
+  if (!w) {
+    alert("Разрешите всплывающие окна для печати документа.");
+    return false;
+  }
+  // Переносим <link rel=stylesheet> и <style> текущей страницы, чтобы бланк
+  // выглядел в окне печати так же, как на экране (кириллица, таблицы, рамки).
+  const styles = Array.from(
+    document.querySelectorAll('link[rel="stylesheet"], style')
+  ).map((el) => el.outerHTML).join("\n");
+
   w.document.write(
-    `<html><head><title>Акт о приёмке запасов</title></head><body>${node.outerHTML}</body></html>`
+    `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>${title}</title>
+${styles}
+<style>
+  @page { size: A4 landscape; margin: 8mm; }
+  html, body { background:#fff; margin:0; padding:0; }
+  body { display:flex; justify-content:center; }
+  .akt-page { width:1040px !important; max-width:1040px; margin:0 auto;
+              border:none !important; box-shadow:none !important; border-radius:0 !important; }
+</style>
+</head><body>${node.outerHTML}</body></html>`
   );
   w.document.close();
   w.focus();
-  setTimeout(() => w.print(), 300);
+  const fire = () => { try { w.print(); } catch { /* окно закрыто */ } };
+  if (w.document.readyState === "complete") setTimeout(fire, 400);
+  else w.addEventListener("load", () => setTimeout(fire, 400));
+  return true;
+}
+
+function printFallback(node) {
+  printNode(node, "Акт о приёмке запасов");
 }

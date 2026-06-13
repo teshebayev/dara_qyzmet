@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, fmt } from "./api.js";
-import { IconSparkles, IconCheck, IconArrow, IconFilePdf, IconScan, IconAlert } from "./icons.jsx";
+import { IconSparkles, IconCheck, IconArrow, IconFilePdf, IconScan, IconAlert, IconPrint } from "./icons.jsx";
 import ActDocument from "./ActDocument.jsx";
-import { exportNodeToPdf } from "./pdfExport.js";
+import { exportNodeToPdf, printNode } from "./pdfExport.js";
 
 const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 
@@ -195,6 +195,11 @@ export default function Scan({ orderId, orders = [], onDone }) {
     finally { setExporting(false); }
   }
 
+  function printAct() {
+    if (!actRef.current) return;
+    printNode(actRef.current, `Акт о приёмке запасов ${actMeta.actNumber}`);
+  }
+
   const now = new Date();
   const actMeta = {
     supplierName: invoice?.supplier_name || "—",
@@ -285,6 +290,9 @@ export default function Scan({ orderId, orders = [], onDone }) {
             <div className="flex gap-8">
               <button className="btn btn-primary" disabled={exporting} onClick={downloadPdf}>
                 <IconFilePdf size={16} /> {exporting ? "Готовлю PDF…" : "Скачать акт (PDF)"}
+              </button>
+              <button className="btn btn-outline" onClick={printAct}>
+                <IconPrint size={16} /> Печать акта
               </button>
               <button className="btn btn-outline" disabled={busy} onClick={accept}>
                 <IconCheck size={16} /> Подтвердить приёмку

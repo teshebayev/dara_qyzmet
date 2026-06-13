@@ -22,3 +22,4 @@ export const IconSparkles  = ({ size = 18 }) => <svg {...S(size)}><path d="M12 3
 export const IconCheck     = ({ size = 16 }) => <svg {...S(size)}><polyline points="20 6 9 17 4 12"/></svg>;
 export const IconFilePdf   = ({ size = 18 }) => <svg {...S(size)}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1.5a1.5 1.5 0 0 1 0 3H9zM9 13v6"/><path d="M14 13v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"/></svg>;
 export const IconAlert     = ({ size = 16 }) => <svg {...S(size)}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+export const IconPrint     = ({ size = 16 }) => <svg {...S(size)}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>;

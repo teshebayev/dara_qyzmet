@@ -1,9 +1,33 @@
-# Dara Qyzmet — цифровая приёмка накладных (MVP по ТЗ)
+# Dara Qyzmet — AI-сотрудник для приёмки накладных
 
-SaaS-бэкенд на **FastAPI + PostgreSQL** с распознаванием накладных через **VLM Qwen2.5-VL (vLLM)**.
-Реализует ТЗ: заявки и их статусы, загрузку/распознавание накладной, редактирование до подтверждения,
-расхождения (недостача/излишек/пересорт/брак) с **автопересчётом суммы**, акт расхождений,
-роль поставщика, агента поддержки и распознавание товара по штрихкоду/фото.
+> 🏆 **2-е место на хакатоне Halyk OIY.**
+
+**Dara Qyzmet** автоматизирует приёмку товаросопроводительных накладных для малого и
+среднего ритейла Казахстана. Кладовщик отправляет фото или PDF накладной — модель
+**Qwen2.5-VL** распознаёт позиции, система проверяет арифметику, ведёт расхождения с
+автопересчётом суммы «к оплате», формирует акт расхождений и отвечает на вопросы по складу
+в чате. За каждой функцией стоит реальная модель и БД — без заглушек и mock-режима.
+
+**Эффект:** ручная приёмка занимает 20+ минут на накладную; с Dara Qyzmet — ≈3 минуты,
+−80% времени и −99% арифметических ошибок.
+
+## Что решаем
+
+Магазин принимает товар от поставщика по бумажной/PDF-накладной. Кладовщик вручную сверяет
+десятки позиций, переносит их в 1С или Excel, ищет ошибки и спорит о расхождениях. Расхождение
+в накладной = либо магазин переплатил, либо конфликт с поставщиком, а сумма «к оплате»
+пересчитывается на калькуляторе. Dara Qyzmet делает этот поток сквозным и цифровым:
+**фото → распознавание → проверка → расхождения → акт → корректировка счёта поставщиком.**
+
+## Каналы (5)
+
+Единый бэкенд (`/api/v1`) как контракт обслуживает все клиенты:
+
+- **Web** — React-кабинет для двух ролей (магазин и поставщик).
+- **Telegram-бот** — приёмка прямо в чате; фото товара → распознавание количества для брака/излишка.
+- **Мобильный ТСД** — Flutter-приложение «Halyk DCT» (`../halyk-dct`): сканер штрихкодов и фотофиксация «в зале приёмки».
+- **AI-агент** — function-calling по складу, расхождениям, расходам, качеству поставщиков, поиску товара по фото.
+- **REST API** — открытый контракт `/api/v1` для интеграций.
 
 ## Запуск
 
@@ -12,19 +36,23 @@ SaaS-бэкенд на **FastAPI + PostgreSQL** с распознаванием 
 
 ```bash
 bash run_vllm.sh                 # отдельный терминал; ждём загрузки весов (долго при первом старте)
-docker compose up --build        # db + qdrant + api + web
+docker compose up --build        # db + qdrant + api + web (+ langfuse)
+docker compose --profile bot up -d bot   # опционально: Telegram-бот
 ```
 
-- **Фронтенд (React):**  http://localhost:3000
-- API/Swagger:  http://localhost:8080/docs
+- **Фронтенд (React):** http://localhost:3000
+- API/Swagger: http://localhost:8080/docs
+- Qdrant: http://localhost:6333 · Langfuse: http://localhost:3001
 - Демо-логины: `store@dara.kz` (магазин) и `dist@dara.kz` (поставщик), пароль `demo12345`.
 
-При старте БД создаётся автоматически и наполняется демо-данными (магазин «Береке»,
-поставщик «Молпром», каталог, одна заявка в статусе «отгружен» — готова к приёмке).
+При старте БД создаётся автоматически (`create_all`, без миграций) и наполняется демо-данными
+(магазин «Береке», поставщик «Молпром», каталог, заявка в статусе «отгружен» — готова к приёмке).
 Параметры подключения к vLLM — в `.env` (см. `.env.example`); по умолчанию api ходит к
-`host.docker.internal:8000/v1`, куда `run_vllm.sh` поднимает модель.
+`host.docker.internal:8000/v1`, куда `run_vllm.sh` поднимает модель. Распознавание и агент
+**деградируют мягко**, если модель недоступна, — старт приложения не блокируется.
 
 ## Демо-сценарий
+
 1. Войдите как магазин → «Заявки» → у заявки «Отгружен» нажмите **Принять**.
 2. Загрузите фото/PDF накладной и нажмите **Распознать** (Qwen2.5-VL извлечёт позиции).
 3. Проверьте/поправьте позиции — проверка подсветит подозрительные строки, суммы пересчитываются.
@@ -33,33 +61,78 @@ docker compose up --build        # db + qdrant + api + web
 6. Войдите как поставщик → «Акты расхождений» → **Скорректировать счёт**.
 7. Кнопка 🤖 справа внизу — агент: «сколько молока на складе?», «какие расхождения?».
 
+## Архитектура
+
+```
+Telegram Bot ─┐
+Web (React) ──┤
+ТСД (Flutter)─┼──▶ FastAPI /api/v1 ──▶ PostgreSQL 16 (SQLAlchemy 2)
+AI-агент ─────┤        JWT · RBAC          │
+REST API ─────┘     изоляция по org_id     ├──▶ Qwen2.5-VL (vLLM) — vision + tool-calling
+                                           └──▶ Qdrant + CLIP — поиск товара по фото
+```
+
+- **Распознавание (VLM):** `vlm/pdf.py` нормализует PDF→PNG (до 5 стр.) → `vlm/client.py`
+  вызывает Qwen2.5-VL по строгой JSON-схеме (`guided_json`) → `vlm/validate.py` проверяет
+  инварианты (контрольная цифра БИН РК, сходимость сумм) и подсвечивает подозрительные строки.
+- **Деньги — ядро домена:** весь пересчёт «к оплате» живёт в единственном месте
+  `services/recalc.py` — `Decimal`, банковское округление `ROUND_HALF_EVEN`. 4 типа расхождений
+  (недостача − / излишек + / брак − / пересорт — по новой цене позиции). Исходная сумма
+  пересчитывается из позиций (`Σ qty×price`), а не из задекларированного итога.
+- **Машина состояний заявки:** `new → shipped → receiving → {accepted | discrepancy} →
+  act_created → invoice_corrected → closed`; переходы валидируются (`assert_transition`),
+  товары уходят в сток только после подтверждения приёмки.
+- **Безопасность записи AI — «предложи → подтверди»:** LLM-агент (LangGraph + function-calling)
+  имеет только read-only инструменты и **никогда не пишет в БД** — он предлагает черновик заказа,
+  а запись делает детерминированный узел лишь после подтверждения человеком. Это снимает риск
+  «галлюцинаций» AI в финансовых операциях.
+- **Мульти-тенант + RBAC:** каждый запрос несёт JWT (bcrypt + HS256) → `Principal(user_id, role,
+  org_id)`; `org_id` — граница изоляции, магазин и поставщик видят только своё.
+
 ## Структура
+
 ```
 backend/                 FastAPI + PostgreSQL + VLM
   app/
-    main.py              точка входа (create_all + seed + роутеры)
-    config.py db.py      конфиг и подключение к Postgres
-    models.py            модель данных (ТЗ 5)
-    schemas.py           Pydantic-схемы
-    security.py deps.py  JWT, хеширование, RBAC + изоляция тенантов
-    services/recalc.py   автопересчёт сумм при расхождениях (ТЗ 5.3)
-    vlm/                 распознавание: pdf, клиент vLLM, валидация (БИН, сходимость)
+    main.py              точка входа (create_all + seed + index_catalog + роутеры)
+    models.py schemas.py модель данных и Pydantic-схемы
+    security.py deps.py  JWT, bcrypt, RBAC + изоляция тенантов
+    services/
+      recalc.py          автопересчёт сумм при расхождениях (Decimal, единый источник)
+      invoice_check.py   сверка OCR-итогов с пересчётом (read-only подсказки)
+      act_pdf.py         генерация акта расхождений
+    vlm/                 распознавание: pdf, клиент vLLM, валидация (БИН, сходимость), схема
+    agent/               LangGraph: graph, function_calling, tools, tool_schemas, state
+    catalog.py           поиск товара по фото (Qdrant + CLIP, фильтр по org_id)
+    bot/main.py          Telegram-бот поверх REST API
     routers/             auth, orders, invoices, acceptance, supplier, products, agent
+    seed.py              демо-данные (Береке, Молпром, каталог, заявка)
   Dockerfile entrypoint.sh pyproject.toml (uv)
-frontend/                React (Vite) — фронтенд в стиле Halyk
+frontend/                React (Vite), без роутер-библиотеки — App.jsx ветвит экраны по роли
   src/
-    App.jsx              роутинг по роли
-    Login.jsx Orders.jsx Acceptance.jsx Supplier.jsx AgentWidget.jsx
+    App.jsx Login.jsx Orders.jsx Acceptance.jsx Supplier.jsx AgentWidget.jsx
     api.js styles.css
-  Dockerfile nginx.conf  (сборка React -> nginx, проксирование /api на бэкенд)
-docker-compose.yml  .env.example
+  Dockerfile nginx.conf  (сборка React → nginx, проксирование /api на бэкенд)
+docker-compose.yml  .env.example   db · qdrant · api · web · bot · langfuse
+pitch/                   презентация, дека и отчёт по проекту
 ```
 
-## Локальная разработка фронта (без Docker)
+## Тесты и разработка
+
 ```bash
-cd frontend && npm install && npm run dev   # http://localhost:5173, /api проксируется на :8080
+# Бэкенд-тесты (чистая бизнес-логика — без GPU/Postgres/сети):
+cd backend && uv run pytest
+
+# Фронтенд (без Docker; /api и /health проксируются на :8080):
+cd frontend && npm install && npm run dev    # http://localhost:5173
 ```
 
 ## Стек
-FastAPI · SQLAlchemy 2 · PostgreSQL 16 · PyMuPDF/Pillow · httpx · vLLM (Qwen2.5-VL) · JWT.
-Распознавание и нормализация PDF переиспользуют паттерны исходного репозитория Dara-Vision.
+
+**Backend:** FastAPI · SQLAlchemy 2 · Pydantic · PostgreSQL 16 · uv (Python ≥3.12) · JWT (HS256) + bcrypt.
+**AI / ML:** vLLM (Qwen2.5-VL) для зрения и tool-calling · LangGraph-агент · fastembed CLIP ViT-B/32 (ONNX/CPU) · Qdrant.
+**Документы:** PyMuPDF / Pillow · httpx (OpenAI-совместимый клиент).
+**Frontend:** React 18 · Vite · nginx.
+**Mobile:** Flutter · Riverpod · go_router (отдельный клиент `../halyk-dct`).
+**Инфра:** docker compose (db · qdrant · api · web · bot · langfuse); vLLM поднимается отдельно на GPU-хосте.
+**Наблюдаемость:** Langfuse (опционально).
